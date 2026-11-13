@@ -31,10 +31,10 @@ export default function AiInsightCard({
   const [lastGeneratedContext, setLastGeneratedContext] = useState(null)
   const [isCopied, setIsCopied] = useState(false)
 
-  // Cache key unik untuk setiap kombinasi tampilan dashboard
+  // Cache key unik untuk setiap kombinasi tampilan dashboard (v3 dengan format 5 bagian lengkap)
   const currentCacheKey = useMemo(() => {
     const itemKey = isAtmosfer ? activeIndicator : activeSector
-    return `sac_ai_v2_${activeSection}_${itemKey}_${activeYear}_${activeMonth}_${chartView}_${yearA}_${yearB}`
+    return `sac_ai_v3_${activeSection}_${itemKey}_${activeYear}_${activeMonth}_${chartView}_${yearA}_${yearB}`
   }, [activeSection, isAtmosfer, activeIndicator, activeSector, activeYear, activeMonth, chartView, yearA, yearB])
 
   // Sinkronisasi dengan cache sesi browser saat berpindah indikator/tahun
@@ -219,9 +219,59 @@ export default function AiInsightCard({
   // Format teks Markdown dengan styling modern
   const renderFormattedAiText = (text) => {
     return text.split('\n').map((line, idx) => {
-      if (!line.trim()) return <div key={idx} className="h-2.5"></div>
+      const trimmed = line.trim()
+      if (!trimmed) return <div key={idx} className="h-2.5"></div>
 
-      // Deteksi bold **text**
+      // Deteksi Heading (#, ##, ###)
+      if (trimmed.startsWith('#')) {
+        const cleanHeading = trimmed.replace(/^#+\s*/, '')
+        const parts = cleanHeading.split(/(\*\*.*?\*\*)/g)
+        const headingContent = parts.map((part, pIdx) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <span key={pIdx} className="font-extrabold text-white">{part.slice(2, -2)}</span>
+          }
+          return part
+        })
+
+        return (
+          <div key={idx} className="mt-5 mb-2.5 pt-3 border-t border-indigo-900/30 first:border-0 first:pt-0 first:mt-1">
+            <h4 className="text-sm md:text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-indigo-200 to-cyan-300 flex items-center gap-2">
+              <span className="w-1.5 h-4 bg-gradient-to-b from-blue-500 to-indigo-500 rounded-full inline-block shadow-neon-blue flex-shrink-0"></span>
+              <span>{headingContent}</span>
+            </h4>
+          </div>
+        )
+      }
+
+      // Deteksi Bullet Points (-, *, •)
+      if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*')) {
+        const cleanBullet = trimmed.replace(/^[-•*]\s*/, '')
+        const parts = cleanBullet.split(/(\*\*.*?\*\*)/g)
+        const bulletContent = parts.map((part, pIdx) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={pIdx} className="text-white font-bold">{part.slice(2, -2)}</strong>
+          }
+          return part
+        })
+
+        return (
+          <div key={idx} className="flex items-start gap-2.5 ml-2 my-1.5 text-xs md:text-sm text-indigo-100/95 leading-relaxed">
+            <span className="text-cyan-400 mt-1 flex-shrink-0 font-bold">•</span>
+            <div>{bulletContent}</div>
+          </div>
+        )
+      }
+
+      // Deteksi Baris Tabel (|)
+      if (trimmed.startsWith('|')) {
+        return (
+          <div key={idx} className="font-mono text-[11px] md:text-xs text-indigo-200/90 py-0.5 overflow-x-auto whitespace-pre">
+            {line}
+          </div>
+        )
+      }
+
+      // Paragraf biasa dengan deteksi bold
       const parts = line.split(/(\*\*.*?\*\*)/g)
       const formattedParts = parts.map((part, pIdx) => {
         if (part.startsWith('**') && part.endsWith('**')) {
@@ -230,24 +280,6 @@ export default function AiInsightCard({
         return part
       })
 
-      if (line.startsWith('###') || line.startsWith('##') || line.startsWith('#')) {
-        return (
-          <div key={idx} className="mt-5 mb-2 pt-3 border-t border-indigo-900/30 first:border-0 first:pt-0 first:mt-1">
-            <h4 className="text-sm md:text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-indigo-200 to-cyan-300 flex items-center gap-2">
-              <span className="w-1.5 h-4 bg-gradient-to-b from-blue-500 to-indigo-500 rounded-full inline-block shadow-neon-blue"></span>
-              <span>{formattedParts}</span>
-            </h4>
-          </div>
-        )
-      }
-      if (line.trim().startsWith('-') || line.trim().startsWith('•') || line.trim().startsWith('*')) {
-        return (
-          <div key={idx} className="flex items-start gap-2.5 ml-2 my-1.5 text-xs md:text-sm text-indigo-100/95 leading-relaxed">
-            <span className="text-blue-400 mt-1 flex-shrink-0">•</span>
-            <div>{formattedParts}</div>
-          </div>
-        )
-      }
       return <p key={idx} className="text-xs md:text-sm text-indigo-100/90 leading-relaxed my-1.5">{formattedParts}</p>
     })
   }
