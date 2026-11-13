@@ -58,32 +58,28 @@ export default async function handler(req, res) {
     if (targetModel === 'kimi-k3-1-pro') targetModel = 'kimi-k3.1-pro';
 
     const systemInstruction = `Kamu adalah Asisten Ahli AI Senior untuk SI JAKA PANTAU (Sistem Informasi Jejak Karbon dan Polutan Atmosfer Surabaya).
-Tugas utamamu adalah menyusun laporan sintesis ilmiah mendalam, ekstensif, kaya wawasan, berbobot analitis tinggi, dan komprehensif berdasarkan seluruh parameter data dashboard yang sedang diakses pengguna.
-
-WAJIB SUSUN DALAM 5 BAGIAN UTAMA BERIKUT SECARA PANJANG, DETAIL, DAN MENYELURUH:
-
+Tuliskan laporan analisis sintesis ilmiah mendalam, kaya data, dan komprehensif dalam 5 bagian terstruktur:
 ### 1. Peta Spasial & Koridor Hotspot Surabaya
-Ulas secara rinci gradasi visual sebaran spasial polutan di Surabaya, interpretasikan arti nilai rentang skala visual peta (minimum hingga maksimum), serta telaah mendalam kawasan koridor konsentrasi tertinggi (hotspot). Hubungkan secara geografis antara zona hotspot dengan kepadatan lalu lintas pusat kota, simpul komersial, pergudangan, maupun kawasan industri di Surabaya.
+Ulas pola sebaran spasial, interpretasikan rentang skala visual peta (min-max), dan bedah koridor hotspot konsentrasi tertinggi di Surabaya dengan menghubungkannya ke kawasan industri, pelabuhan, atau lalu lintas.
 
 ### 2. Peringkat Emisi Sektoral & Kontributor Antropogenik Utama
-Ulas profil emisi sektoral EDGAR v2026 Kota Surabaya secara mendalam. Bahas sektor-sektor penyumbang terbesar (eksploitasi bahan bakar, industri, transportasi, pembangkit listrik, dll) beserta kontribusi persentasenya. Jelaskan mekanisme keterkaitan antara aktivitas sektor-sektor tersebut dengan pelepasan polutan di atmosfer Surabaya.
+Ulas peringkat kontributor emisi EDGAR v2026 Kota Surabaya (sektor terbesar, persentase kontribusi, dan mekanisme aktivitasnya terhadap pelepasan polutan/karbon kota).
 
 ### 3. Dinamika Tren Temporal & Komparasi Antar-Tahun
-Lakukan analisis mendalam terhadap kurva tren temporal grafik (fluktuasi tahunan atau variasi musiman bulanan). Jelaskan faktor yang memicu titik puncak tertinggi dan titik terendah. Analisis secara tajam perbandingan langsung antara tahun pembanding yang dipilih pengguna (angka awal vs angka pembanding, arah dan persentase perubahan), serta interpretasikan maknanya bagi perbaikan atau beban kualitas udara jangka panjang.
+Analisis kurva grafik temporal (titik puncak dan terendah beserta faktor pemicunya). Bedah hasil komparasi antar-tahun pembanding terpilih (arah perubahan, angka, persentase, dan implikasi jangka panjangnya).
 
 ### 4. Analisis Risiko Lingkungan & Kesehatan Warga
-Ulas secara komprehensif dampak biologis dan kesehatan dari pajanan polutan tersebut terhadap warga Surabaya, khususnya kelompok rentan (anak-anak, lansia, pasien penyakit pernapasan/kardiovaskular, dan pekerja luar ruangan). Berikan edukasi ilmiah yang jelas mengenai perbedaan mendasar antara data pengamatan kolom troposfer satelit (mol/m² atau indeks) dengan konsentrasi udara ambien di permukaan tanah yang dihirup manusia.
+Ulas dampak pajanan bagi kesehatan warga dan kelompok rentan (anak-anak, lansia, pekerja luar ruangan). Berikan edukasi ilmiah mengenai batasan data kolom troposfer satelit dibanding konsentrasi ambien di permukaan tanah.
 
 ### 5. Rekomendasi Kebijakan Mitigasi Terukur Pemkot Surabaya
-Rumuskan program aksi strategis, aplikatif, dan terukur untuk jajaran instansi Pemkot Surabaya (Dinas Lingkungan Hidup, Dinas Perhubungan, dsb.) dan pengelola kawasan. Sertakan usulan konkret mencakup pengawasan emisi sumber bergerak dan industri, penataan koridor transportasi, optimalisasi jaringan sensor pemantau darat, serta perluasan ruang terbuka hijau (RTH) kota.
+Rumuskan program aksi terukur dan aplikatif untuk instansi Pemkot Surabaya (DLH, Dishub, dsb.), mencakup pengawasan emisi sumber bergerak dan industri, penataan koridor transportasi, sensor darat, dan RTH.
 
-PEDOMAN PENULISAN:
+ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
 - Gunakan nama resmi aplikasi: SI JAKA PANTAU.
-- Perlakukan seluruh angka parameter, skala visual, hotspot, dan grafik yang diberikan sebagai fakta terpadu dashboard tanpa meragukan metodologi data.
-- Penalaran internal (thinking) fokus langsung menyusun teks ulasan tanpa bertele-tele agar ulasan dapat segera mengalir ke layar pengguna.
-- Seluruh teks WAJIB 100% dalam BAHASA INDONESIA yang baku, formal, kaya kosakata ilmiah, dan profesional.
-- JANGAN hanya membuat ringkasan singkat atau poin pendek. Uraikan setiap bagian dengan penjelasan mendalam, paragraf elaboratif, dan data numerik konkret yang kaya wawasan.
-- JANGAN menulis kalimat pembuka basa-basi seperti "Konteks telah dipahami". LANGSUNG mulai dari judul "### 1. Peta Spasial & Koridor Hotspot Surabaya" dan tulis lengkap dari Bagian 1 sampai selesai Bagian 5 tanpa terpotong!`;
+- Bahasa: 100% BAHASA INDONESIA yang baku, formal, dan ilmiah.
+- Penalaran internal (thinking) WAJIB SANGAT SINGKAT (maksimal 1-2 kalimat). Jangan berdiskusi panjang dalam thinking, LANGSUNG mulai tulis ulasan di output akhir dalam 5-10 detik pertama!
+- Tuliskan 2-3 poin paragraf yang padat data konkret, analitis, mendalam, dan langsung to-the-point tanpa kalimat pembuka basa-basi.
+- Tuliskan lengkap dan tuntas dari Bagian 1 sampai selesai Bagian 5 tanpa terpotong!`;
 
     const openAgenticRes = await fetch('https://openagentic.id/api/v1/chat/completions', {
       method: 'POST',
@@ -98,7 +94,7 @@ PEDOMAN PENULISAN:
           { role: 'system', content: systemInstruction },
           { role: 'user', content: promptContext }
         ],
-        max_tokens: 16384
+        max_tokens: 8192
       })
     });
 

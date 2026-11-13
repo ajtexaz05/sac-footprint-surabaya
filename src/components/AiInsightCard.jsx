@@ -82,10 +82,8 @@ export default function AiInsightCard({
     let hotspotDesc = ''
     if (isAtmosfer && hotspots && hotspots.length > 0) {
       hotspotDesc = hotspots.map((h, i) => `${i + 1}. ${h.name} (${h.val})`).join(', ')
-    } else if (!isAtmosfer && edgarPieData && edgarPieData.length > 0) {
-      hotspotDesc = edgarPieData.slice(0, 5).map((s, i) => `${i + 1}. ${s.fullName} (${fmtTon(s.value)} ton CO₂, ${((s.value / (edgarTotalCO2 || 1)) * 100).toFixed(1)}%)`).join(', ')
     } else {
-      hotspotDesc = 'Tersebar di zona industri barat, koridor pelabuhan utara, dan pusat perlintasan transportasi Surabaya'
+      hotspotDesc = 'Konsentrasi spasial emisi terakumulasi pada koridor logistik pelabuhan utara (Tanjung Perak), kawasan industri-pergudangan (Margomulyo & Rungkut), serta jalur arteri perlintasan utama Surabaya.'
     }
 
     // 4. Ekstrak peringkat emisi sektoral EDGAR v2026 Kota Surabaya
