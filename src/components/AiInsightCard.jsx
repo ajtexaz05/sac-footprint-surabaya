@@ -31,16 +31,16 @@ export default function AiInsightCard({
   const [lastGeneratedContext, setLastGeneratedContext] = useState(null)
   const [isCopied, setIsCopied] = useState(false)
 
-  // Cache key unik untuk setiap kombinasi tampilan dashboard (v4 laporan mendalam 5 bagian)
+  // Cache key unik untuk setiap kombinasi tampilan dashboard (v5 SI JAKA PANTAU - Tersimpan per-browser user di localStorage)
   const currentCacheKey = useMemo(() => {
     const itemKey = isAtmosfer ? activeIndicator : activeSector
-    return `sac_ai_v4_${activeSection}_${itemKey}_${activeYear}_${activeMonth}_${chartView}_${yearA}_${yearB}`
+    return `sijaka_ai_v5_${activeSection}_${itemKey}_${activeYear}_${activeMonth}_${chartView}_${yearA}_${yearB}`
   }, [activeSection, isAtmosfer, activeIndicator, activeSector, activeYear, activeMonth, chartView, yearA, yearB])
 
-  // Sinkronisasi dengan cache sesi browser saat berpindah indikator/tahun
+  // Sinkronisasi dengan localStorage browser lokal user saat berpindah indikator/tahun
   useEffect(() => {
     try {
-      const cached = sessionStorage.getItem(currentCacheKey)
+      const cached = localStorage.getItem(currentCacheKey)
       if (cached) {
         setAiOutput(cached)
         setLastGeneratedContext(`${isAtmosfer ? indicatorMeta.label : sectorMeta.short} • ${monthName} ${activeYear}`)
@@ -109,7 +109,7 @@ export default function AiInsightCard({
     }
 
     // 6. Susun konteks komprehensif seluruh elemen layar beranda beserta instruksi laporan
-    const promptContext = `DATA KONTEKS DASHBOARD BERANDA SAC-FOOTPRINT SURABAYA:
+    const promptContext = `DATA KONTEKS DASHBOARD BERANDA SI JAKA PANTAU (SISTEM INFORMASI JEJAK KARBON & POLUTAN ATMOSFER SURABAYA):
 - Sektor/Parameter Utama: ${isAtmosfer ? `${indicatorMeta.fullName} (${indicatorMeta.label})` : `${sectorMeta.label} (${sectorMeta.short})`}
 - Periode Aktif: Bulan ${monthName} Tahun ${activeYear} (Tampilan Grafik ${chartView})
 - Nilai Rata-rata/Total Terkini: ${isAtmosfer ? `${fmtNum(kpiData.latest)} ${indicatorMeta.displayUnit} (Perubahan YoY: ${kpiData.change != null ? (kpiData.change > 0 ? '+' : '') + kpiData.change.toFixed(1) + '%' : '–'})` : `Total Emisi Kota: ${fmtTon(kpiData.total)} ton CO₂ (Sektor Terbesar: ${kpiData.topSector?.name || '–'} ${fmtTon(kpiData.topSector?.value)} ton)`}
@@ -194,7 +194,7 @@ Uraikan secara panjang, detail, ilmiah, dan berbobot dari Bagian 1 sampai selesa
 
       if (accumulatedText.trim()) {
         try {
-          sessionStorage.setItem(currentCacheKey, accumulatedText)
+          localStorage.setItem(currentCacheKey, accumulatedText)
         } catch {}
       } else if (!detectedQuota) {
         throw new Error('Server AI membutuhkan waktu penalaran sedikit lebih lama untuk parameter ini. Silakan klik tombol "Perbarui Analisis" untuk memuat ulasan.')
