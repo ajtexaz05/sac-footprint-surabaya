@@ -57,11 +57,20 @@ Tolong berikan analisis komprehensif, interpretasi makna angka tersebut, dan rek
         },
         body: JSON.stringify({
           promptContext,
-          model: 'kimi-k3-1-pro'
+          model: 'kimi-k3.1-pro'
         })
       })
 
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch (jsonErr) {
+        throw new Error(
+          response.status === 404
+            ? 'Endpoint /api/generate tidak ditemukan pada server lokal. Untuk pengujian lokal gunakan file .env atau deploy ke Vercel.'
+            : 'Respon server tidak valid atau kosong (bukan format JSON).'
+        )
+      }
 
       if (!response.ok || data.error) {
         throw new Error(data?.error || `Gagal menghubungi server AI (Status ${response.status})`)

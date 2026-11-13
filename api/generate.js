@@ -13,11 +13,18 @@ export default async function handler(req, res) {
   const apiKey = process.env.SECRET_AI_API_KEY; 
 
   if (!apiKey) {
-    return res.status(500).json({ error: 'API Key server belum dikonfigurasi pada environment variable Vercel (SECRET_AI_API_KEY).' });
+    return res.status(500).json({ 
+      error: 'API Key server belum dikonfigurasi pada Environment Variables Vercel (SECRET_AI_API_KEY).' 
+    });
   }
 
   try {
-    // Base URL resmi OpenAgentic: https://openagentic.id/api/v1
+    // Normalisasi Model ID OpenAgentic: Kimi K3.1 Pro menggunakan titik 'kimi-k3.1-pro'
+    let targetModel = model || 'kimi-k3.1-pro';
+    if (targetModel === 'kimi-k3-1-pro') {
+      targetModel = 'kimi-k3.1-pro';
+    }
+
     const response = await fetch('https://openagentic.id/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -25,7 +32,7 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: model || 'kimi-k3-1-pro',
+        model: targetModel,
         messages: [
           {
             role: 'system',
