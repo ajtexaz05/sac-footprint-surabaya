@@ -34,7 +34,7 @@ export default function AiInsightCard({
   // Cache key unik untuk setiap kombinasi tampilan dashboard
   const currentCacheKey = useMemo(() => {
     const itemKey = isAtmosfer ? activeIndicator : activeSector
-    return `sac_ai_${activeSection}_${itemKey}_${activeYear}_${activeMonth}_${chartView}_${yearA}_${yearB}`
+    return `sac_ai_v2_${activeSection}_${itemKey}_${activeYear}_${activeMonth}_${chartView}_${yearA}_${yearB}`
   }, [activeSection, isAtmosfer, activeIndicator, activeSector, activeYear, activeMonth, chartView, yearA, yearB])
 
   // Sinkronisasi dengan cache sesi browser saat berpindah indikator/tahun
@@ -52,7 +52,7 @@ export default function AiInsightCard({
     } catch {
       // Abaikan jika storage dinonaktifkan
     }
-  }, [currentCacheKey, isAtmosfer, indicatorMeta.label, sectorMeta.short, monthName, activeYear])
+  }, [currentCacheKey, isAtmosfer, indicatorMeta?.label, sectorMeta?.short, monthName, activeYear])
 
   // Generate Analisis AI Komprehensif Membaca Seluruh Elemen di Layar
   const handleGenerateAi = async (forceRefresh = false) => {
@@ -62,46 +62,62 @@ export default function AiInsightCard({
     setErrorMsg('')
     setIsQuotaExhausted(false)
 
-    // 1. Ekstrak deskripsi peta spasial & skala
+    // 1. Ekstrak deskripsi peta spasial & skala visual
     const skalaPetaDesc = activeScale
-      ? `${activeScale.title} dengan rentang nilai Min: ${activeScale.min} hingga Max: ${activeScale.max} ${activeScale.unit}`
-      : 'Sesuai resolusi grid 0.1° batas administratif Surabaya'
+      ? `${activeScale.title} dengan rentang skala visual Min: ${activeScale.min} hingga Max: ${activeScale.max} ${activeScale.unit}`
+      : 'Resolusi grid 0.1° (~11 km) berbasis batas wilayah Kota Surabaya'
 
-    // 2. Ekstrak tren grafik temporal yang sedang dipilih
-    let trenGrafikDesc = `Tampilan ${chartView}: `
+    // 2. Ekstrak data tren temporal grafik yang sedang aktif
+    let trenGrafikDesc = `Mode Grafik ${chartView}: `
     if (chartData && chartData.length > 0) {
       const validPoints = chartData.filter(d => d.value != null)
       if (validPoints.length > 0) {
         const minPt = validPoints.reduce((p, c) => (c.value < p.value ? c : p), validPoints[0])
         const maxPt = validPoints.reduce((p, c) => (c.value > p.value ? c : p), validPoints[0])
-        trenGrafikDesc += `Puncak tertinggi tercatat pada ${maxPt.year || maxPt.month} (${isAtmosfer ? fmtNum(maxPt.value) : fmtTon(maxPt.value)} ${isAtmosfer ? indicatorMeta.displayUnit : 'ton'}), sedangkan titik terendah pada ${minPt.year || minPt.month} (${isAtmosfer ? fmtNum(minPt.value) : fmtTon(minPt.value)} ${isAtmosfer ? indicatorMeta.displayUnit : 'ton'}).`
+        trenGrafikDesc += `Puncak tertinggi tercatat pada ${maxPt.year || maxPt.month} (${isAtmosfer ? fmtNum(maxPt.value) : fmtTon(maxPt.value)} ${isAtmosfer ? indicatorMeta.displayUnit : 'ton CO₂'}), titik terendah pada ${minPt.year || minPt.month} (${isAtmosfer ? fmtNum(minPt.value) : fmtTon(minPt.value)} ${isAtmosfer ? indicatorMeta.displayUnit : 'ton CO₂'}).`
       }
     }
 
-    // 3. Ekstrak data hotspot konsentrasi / proporsi sektor
+    // 3. Ekstrak data hotspot spasial & koridor konsentrasi tertinggi
     let hotspotDesc = ''
     if (isAtmosfer && hotspots && hotspots.length > 0) {
       hotspotDesc = hotspots.map((h, i) => `${i + 1}. ${h.name} (${h.val})`).join(', ')
     } else if (!isAtmosfer && edgarPieData && edgarPieData.length > 0) {
-      hotspotDesc = edgarPieData.slice(0, 4).map((s, i) => `${i + 1}. ${s.fullName} (${fmtTon(s.value)} ton, ${((s.value / (edgarTotalCO2 || 1)) * 100).toFixed(1)}%)`).join(', ')
+      hotspotDesc = edgarPieData.slice(0, 5).map((s, i) => `${i + 1}. ${s.fullName} (${fmtTon(s.value)} ton CO₂, ${((s.value / (edgarTotalCO2 || 1)) * 100).toFixed(1)}%)`).join(', ')
     } else {
-      hotspotDesc = 'Tersebar di wilayah industri dan transportasi Surabaya'
+      hotspotDesc = 'Tersebar di zona industri barat, koridor pelabuhan utara, dan pusat perlintasan transportasi Surabaya'
     }
 
-    // 4. Ekstrak komparasi antar-tahun
-    const komparasiDesc = comparisonData
-      ? `Perbandingan Tahun ${yearA} (${isAtmosfer ? fmtNum(comparisonData.valA) : fmtTon(comparisonData.valA)}) terhadap Tahun ${yearB} (${isAtmosfer ? fmtNum(comparisonData.valB) : fmtTon(comparisonData.valB)}), tercatat perubahan sebesar ${comparisonData.change != null ? (comparisonData.change > 0 ? '+' : '') + comparisonData.change.toFixed(1) + '%' : '–'}.`
-      : 'Belum ada data komparasi tahun pembanding'
+    // 4. Ekstrak peringkat emisi sektoral EDGAR v2026 Kota Surabaya
+    let rankingSektoralDesc = ''
+    if (edgarPieData && edgarPieData.length > 0) {
+      rankingSektoralDesc = edgarPieData.map((s, i) =>
+        `${i + 1}. ${s.fullName} [${s.name}]: ${fmtTon(s.value)} ton CO₂ (${edgarTotalCO2 > 0 ? ((s.value / edgarTotalCO2) * 100).toFixed(1) : 0}%)`
+      ).join('; ')
+    } else {
+      rankingSektoralDesc = 'Data emisi 8 sektor EDGAR v2026 (Transportasi, Industri Manufaktur, Energi, Residensial, dll).'
+    }
 
-    // 5. Susun prompt konteks padat & terstruktur
-    const promptContext = `Data Dashboard SAC-Footprint Surabaya:
-- Parameter/Sektor: ${isAtmosfer ? `${indicatorMeta.fullName} (${indicatorMeta.label})` : `${sectorMeta.label} (${sectorMeta.short})`}
-- Periode Terpilih: Bulan ${monthName} ${activeYear} (${chartView})
-- Nilai Terkini: ${isAtmosfer ? `Rata-rata: ${fmtNum(kpiData.latest)} ${indicatorMeta.displayUnit} (YoY: ${kpiData.change != null ? (kpiData.change > 0 ? '+' : '') + kpiData.change.toFixed(1) + '%' : '–'})` : `Total: ${fmtTon(kpiData.total)} ton CO₂. Terbesar: ${kpiData.topSector?.name || '–'} (${fmtTon(kpiData.topSector?.value)} ton)`}
-- Peta Spasial: ${skalaPetaDesc}
-- Tren Grafik (${chartView}): ${trenGrafikDesc}
-- Hotspot Tertinggi: ${hotspotDesc}
-- Komparasi Tahun: ${komparasiDesc}`
+    // 5. Ekstrak data komparasi antar-tahun pembanding
+    let komparasiDesc = ''
+    if (comparisonData && comparisonData.valA != null && comparisonData.valB != null) {
+      const delta = comparisonData.change != null ? comparisonData.change.toFixed(1) : '–'
+      const arah = comparisonData.change > 0 ? 'Kenaikan (+)' : comparisonData.change < 0 ? 'Penurunan (-)' : 'Stabil'
+      komparasiDesc = `Komparasi Tahun ${yearA} (${isAtmosfer ? fmtNum(comparisonData.valA) + ' ' + indicatorMeta.displayUnit : fmtTon(comparisonData.valA) + ' ton CO₂'}) terhadap Tahun ${yearB} (${isAtmosfer ? fmtNum(comparisonData.valB) + ' ' + indicatorMeta.displayUnit : fmtTon(comparisonData.valB) + ' ton CO₂'}): Tercatat perubahan ${arah} sebesar ${delta}%.`
+    } else {
+      komparasiDesc = `Perbandingan terpilih antara tahun ${yearA} dan ${yearB}.`
+    }
+
+    // 6. Susun konteks komprehensif seluruh elemen layar beranda
+    const promptContext = `DATA KONTEKS DASHBOARD BERANDA SAC-FOOTPRINT SURABAYA:
+- Sektor/Parameter Utama: ${isAtmosfer ? `${indicatorMeta.fullName} (${indicatorMeta.label})` : `${sectorMeta.label} (${sectorMeta.short})`}
+- Periode Aktif: Bulan ${monthName} Tahun ${activeYear} (Tampilan Grafik ${chartView})
+- Nilai Rata-rata/Total Terkini: ${isAtmosfer ? `${fmtNum(kpiData.latest)} ${indicatorMeta.displayUnit} (Perubahan YoY: ${kpiData.change != null ? (kpiData.change > 0 ? '+' : '') + kpiData.change.toFixed(1) + '%' : '–'})` : `Total Emisi Kota: ${fmtTon(kpiData.total)} ton CO₂ (Sektor Terbesar: ${kpiData.topSector?.name || '–'} ${fmtTon(kpiData.topSector?.value)} ton)`}
+- Peta Spasial & Skala Visual: ${skalaPetaDesc}
+- Koridor Hotspot / Konsentrasi Tertinggi di Surabaya: ${hotspotDesc}
+- Peringkat Kontribusi Emisi Sektoral EDGAR v2026: ${rankingSektoralDesc}
+- Dinamika Grafik Temporal (${chartView}): ${trenGrafikDesc}
+- Komparasi Antar-Tahun Terpilih (${yearA} vs ${yearB}): ${komparasiDesc}`
 
     try {
       const response = await fetch('/api/generate', {
@@ -175,8 +191,18 @@ export default function AiInsightCard({
       }
     } catch (err) {
       console.error('AI Generation Error:', err)
-      const message = typeof err?.message === 'object' ? JSON.stringify(err.message) : (err?.message || 'Terjadi kesalahan saat memproses permintaan AI.')
-      setErrorMsg(message)
+      const rawMsg = typeof err?.message === 'object' ? JSON.stringify(err.message) : (err?.message || '')
+      let message = rawMsg
+      if (/terminated|premature|socket hang up|abort/i.test(rawMsg)) {
+        message = 'Koneksi ke server AI sempat terputus saat proses penalaran berlangsung. Silakan klik tombol "Perbarui Analisis" di kanan atas untuk memuat kembali ulasan lengkap.'
+      } else if (!message) {
+        message = 'Terjadi kesalahan saat memproses permintaan AI.'
+      }
+      
+      // Jika teks analisis sudah ada sebagian atau lengkap, pertahankan teks tersebut
+      if (!aiOutput) {
+        setErrorMsg(message)
+      }
     } finally {
       setIsLoading(false)
     }
@@ -190,7 +216,7 @@ export default function AiInsightCard({
     setTimeout(() => setIsCopied(false), 2500)
   }
 
-  // Format teks Markdown sederhana (bold, bullet points, headings)
+  // Format teks Markdown dengan styling modern
   const renderFormattedAiText = (text) => {
     return text.split('\n').map((line, idx) => {
       if (!line.trim()) return <div key={idx} className="h-2.5"></div>
@@ -205,17 +231,24 @@ export default function AiInsightCard({
       })
 
       if (line.startsWith('###') || line.startsWith('##') || line.startsWith('#')) {
-        return <h4 key={idx} className="text-sm md:text-base font-bold text-blue-300 mt-4 mb-1.5 flex items-center gap-1.5">{formattedParts}</h4>
+        return (
+          <div key={idx} className="mt-5 mb-2 pt-3 border-t border-indigo-900/30 first:border-0 first:pt-0 first:mt-1">
+            <h4 className="text-sm md:text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-indigo-200 to-cyan-300 flex items-center gap-2">
+              <span className="w-1.5 h-4 bg-gradient-to-b from-blue-500 to-indigo-500 rounded-full inline-block shadow-neon-blue"></span>
+              <span>{formattedParts}</span>
+            </h4>
+          </div>
+        )
       }
       if (line.trim().startsWith('-') || line.trim().startsWith('•') || line.trim().startsWith('*')) {
         return (
-          <div key={idx} className="flex items-start gap-2.5 ml-2 my-1 text-xs md:text-sm text-indigo-100/95 leading-relaxed">
+          <div key={idx} className="flex items-start gap-2.5 ml-2 my-1.5 text-xs md:text-sm text-indigo-100/95 leading-relaxed">
             <span className="text-blue-400 mt-1 flex-shrink-0">•</span>
             <div>{formattedParts}</div>
           </div>
         )
       }
-      return <p key={idx} className="text-xs md:text-sm text-indigo-100/90 leading-relaxed my-1">{formattedParts}</p>
+      return <p key={idx} className="text-xs md:text-sm text-indigo-100/90 leading-relaxed my-1.5">{formattedParts}</p>
     })
   }
 
@@ -227,21 +260,28 @@ export default function AiInsightCard({
       <div className="flex flex-wrap justify-between items-center gap-4 mb-5 relative z-10 border-b border-indigo-900/40 pb-4">
         <div>
           <h3 className="text-xl md:text-2xl font-bold text-white font-display flex items-center gap-2.5">
-            <span className="p-2 bg-gradient-to-br from-blue-600/30 to-indigo-600/30 rounded-2xl text-indigo-400 border border-indigo-500/40 shadow-neon-blue inline-flex items-center justify-center">
-              ✨
+            <span className="p-2 bg-gradient-to-br from-blue-600/30 to-indigo-600/30 rounded-2xl text-cyan-400 border border-indigo-500/40 shadow-neon-blue inline-flex items-center justify-center">
+              {/* Modern Sparkles Vector Icon */}
+              <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                <path d="M5 3v4"/>
+                <path d="M19 17v4"/>
+                <path d="M3 5h4"/>
+                <path d="M17 19h4"/>
+              </svg>
             </span>
             <span>Analisis Sintesis Cerdas AI (Kimi K3.1 Pro)</span>
           </h3>
           <p className="text-xs text-indigo-300/80 mt-1">
-            Penjelasan mendalam peta spasial, tren temporal grafis, analisis hotspot, dan komparasi antar-tahun
+            Penjelasan komprehensif peta spasial, peringkat emisi sektoral, tren grafik temporal, dan komparasi antar-tahun
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Badge Konteks Posisi Saat Ini */}
-          <span className="text-xs font-bold text-indigo-300 bg-indigo-950/80 px-3.5 py-1.5 rounded-xl border border-indigo-500/40 flex items-center gap-1.5 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
-            <span>{isAtmosfer ? indicatorMeta.label : sectorMeta.short} • {monthName} {activeYear} ({chartView})</span>
+          <span className="text-xs font-bold text-indigo-300 bg-indigo-950/80 px-3.5 py-1.5 rounded-xl border border-indigo-500/40 flex items-center gap-2 shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span>{isAtmosfer ? indicatorMeta?.label : sectorMeta?.short} • {monthName} {activeYear} ({chartView})</span>
           </span>
 
           {/* Tombol Salin (Bila Ada Hasil) */}
@@ -251,22 +291,43 @@ export default function AiInsightCard({
               className="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/60 flex items-center gap-1.5 transition cursor-pointer"
               title="Salin analisis lengkap ke clipboard"
             >
-              <span>{isCopied ? '✓' : '📋'}</span>
+              {isCopied ? (
+                <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              )}
               <span>{isCopied ? 'Tersalin!' : 'Salin'}</span>
             </button>
           )}
 
-          {/* Tombol Generate / Refresh AI */}
+          {/* SATU TOMBOL UTAMA GENERATE / REFRESH AI (Tidak Ada Duplikasi) */}
           <button
             onClick={() => handleGenerateAi(!!aiOutput)}
             disabled={isLoading}
             className={`px-4 py-2 text-xs md:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer ${
               isLoading
                 ? 'bg-indigo-700 text-indigo-200 cursor-not-allowed opacity-80 animate-pulse'
-                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white border border-blue-400/50 shadow-neon-blue'
+                : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white border border-cyan-400/40 shadow-neon-blue'
             }`}
           >
-            <span>{isLoading ? '⏳' : aiOutput ? '🔄' : '⚡'}</span>
+            {isLoading ? (
+              <svg className="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+              </svg>
+            ) : aiOutput ? (
+              <svg className="w-4 h-4 text-cyan-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4 text-cyan-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            )}
             <span>{isLoading ? 'Memproses Penalaran AI...' : aiOutput ? 'Perbarui Analisis' : 'Generate Analisis AI'}</span>
           </button>
         </div>
@@ -275,7 +336,9 @@ export default function AiInsightCard({
       {/* ==================== ALERT KHUSUS JIKA TOKEN/SALDO HABIS ==================== */}
       {isQuotaExhausted && (
         <div className="mb-5 p-4 bg-amber-950/60 border border-amber-500/60 rounded-2xl text-xs md:text-sm text-amber-200 flex items-start gap-3 relative z-10 shadow-lg animate-in fade-in">
-          <span className="text-xl">⚠️</span>
+          <svg className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
           <div className="space-y-1">
             <h5 className="font-bold text-amber-300 text-sm">Pemberitahuan: Kuota Token AI / Saldo Wallet Mencapai Batas</h5>
             <p className="text-xs text-amber-200/90 leading-relaxed">
@@ -292,7 +355,9 @@ export default function AiInsightCard({
       {errorMsg && !isQuotaExhausted && (
         <div className="mb-4 p-3.5 bg-rose-950/50 border border-rose-500/50 rounded-xl text-xs text-rose-200 flex items-start justify-between gap-2 relative z-10">
           <div className="flex items-start gap-2">
-            <span>⚠️</span>
+            <svg className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
             <span>{errorMsg}</span>
           </div>
           <button onClick={() => setErrorMsg('')} className="text-rose-400 hover:text-white font-bold cursor-pointer">✕</button>
@@ -301,13 +366,13 @@ export default function AiInsightCard({
 
       {/* ==================== KONTEN ANALISIS AI ==================== */}
       <div className="relative z-10">
-        {/* Loading State: Tampilan Saat AI Sedang Menalar (Thinking) & Belum Mengalirkan Teks */}
+        {/* Loading State: Tampilan Saat AI Sedang Menalar & Mengalirkan Teks */}
         {isLoading && !aiOutput && (
           <div className="space-y-3.5 py-6 animate-pulse">
             <div className="flex items-center gap-2.5 text-indigo-300 text-xs md:text-sm font-semibold">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-ping"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
               <span>
-                Model Kimi K3.1 Pro sedang menelaah data spasial & dinamika atmosfer Surabaya ({isAtmosfer ? indicatorMeta.label : sectorMeta.short} • {monthName} {activeYear})...
+                Model Kimi K3.1 Pro sedang menelaah 5 dimensi data spasial, sektoral, & temporal Surabaya ({isAtmosfer ? indicatorMeta?.label : sectorMeta?.short} • {monthName} {activeYear})...
               </span>
             </div>
             <div className="h-3 bg-indigo-900/40 rounded-full w-5/6"></div>
@@ -331,64 +396,93 @@ export default function AiInsightCard({
               </span>
               <div className="flex items-center gap-2 text-slate-400 text-[10px]">
                 <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 text-[10px] font-sans font-medium">
-                  🇮🇩 100% Bahasa Indonesia
+                  ID 100% Bahasa Indonesia
                 </span>
                 <span>Didukung Kimi K3.1 Pro • OpenAgentic API</span>
               </div>
             </div>
             {/* Kotak responsif: tinggi otomatis menyesuaikan konten, dan jika panjang dapat di-scroll dengan elegan */}
-            <div className="max-h-[560px] overflow-y-auto pr-2 custom-scrollbar space-y-2">
+            <div className="max-h-[580px] overflow-y-auto pr-2 custom-scrollbar space-y-2">
               {renderFormattedAiText(aiOutput)}
               {isLoading && (
-                <span className="inline-block w-2 h-4 bg-indigo-400 animate-pulse ml-1 align-middle"></span>
+                <span className="inline-block w-2 h-4 bg-cyan-400 animate-pulse ml-1 align-middle"></span>
               )}
             </div>
           </div>
         )}
 
-        {/* Hero CTA State: Tampilan Awal Sebelum Generate (Menggantikan Teks Standar Lama) */}
+        {/* Hero CTA State: Tampilan Awal Sebelum Generate (HANYA SATU TOMBOL DI HEADER) */}
         {!isLoading && !aiOutput && (
-          <div className="p-6 md:p-8 rounded-2xl bg-[#050B14]/60 border border-indigo-900/40 text-center space-y-4">
+          <div className="p-6 md:p-8 rounded-2xl bg-[#050B14]/60 border border-indigo-900/40 text-center space-y-5">
             <div className="max-w-2xl mx-auto space-y-2">
               <h4 className="text-lg md:text-xl font-bold text-white font-display">
                 Ingin Memahami Makna Angka & Pola Spasial Ini Secara Mendalam?
               </h4>
               <p className="text-xs md:text-sm text-indigo-200/80 leading-relaxed">
-                Klik tombol <strong className="text-blue-300">"Generate Analisis AI"</strong> di atas. Model AI Kimi K3.1 Pro akan membaca posisi layar Anda secara real-time dan menghasilkan sintesis komprehensif 4 bagian:
+                Klik tombol <strong className="text-cyan-300">"Generate Analisis AI"</strong> di kanan atas. Model AI Kimi K3.1 Pro akan membaca posisi layar Anda secara real-time dan menghasilkan sintesis komprehensif 5 bagian:
               </p>
             </div>
 
-            {/* Grid 4 Kartu Fitur Analisis */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 text-left">
-              <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-900/40 flex flex-col gap-1">
-                <span className="text-base">🗺️</span>
+            {/* Grid 5 Kartu Fitur Analisis dengan Ikon Modern (Tanpa Emoji) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-2 text-left">
+              {/* 1. Peta Spasial */}
+              <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-900/40 flex flex-col gap-1.5 hover:border-blue-500/40 transition-colors">
+                <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                </div>
                 <span className="text-xs font-bold text-white">Peta & Hotspot Spasial</span>
                 <span className="text-[11px] text-slate-400 leading-snug">Gradasi wilayah pekat di Surabaya, arti skala, & koridor emisi.</span>
               </div>
-              <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-900/40 flex flex-col gap-1">
-                <span className="text-base">📈</span>
+
+              {/* 2. Peringkat Sektoral */}
+              <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-900/40 flex flex-col gap-1.5 hover:border-indigo-500/40 transition-colors">
+                <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                <span className="text-xs font-bold text-white">Peringkat Sektoral</span>
+                <span className="text-[11px] text-slate-400 leading-snug">Kontributor terbesar EDGAR & proporsi sektor fosil Surabaya.</span>
+              </div>
+
+              {/* 3. Tren & Komparasi Antar-Tahun */}
+              <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-900/40 flex flex-col gap-1.5 hover:border-cyan-500/40 transition-colors">
+                <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
                 <span className="text-xs font-bold text-white">Tren & Komparasi Tahun</span>
                 <span className="text-[11px] text-slate-400 leading-snug">Fluktuasi grafik {chartView} & perbandingan {yearA} vs {yearB}.</span>
               </div>
-              <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-900/40 flex flex-col gap-1">
-                <span className="text-base">⚠️</span>
+
+              {/* 4. Dampak Lingkungan */}
+              <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-900/40 flex flex-col gap-1.5 hover:border-amber-500/40 transition-colors">
+                <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
                 <span className="text-xs font-bold text-white">Dampak Lingkungan</span>
-                <span className="text-[11px] text-slate-400 leading-snug">Risiko pajanan warga & batasan kolom vertikal satelit.</span>
+                <span className="text-[11px] text-slate-400 leading-snug">Risiko pajanan warga & batasan kolom vertikal troposfer.</span>
               </div>
-              <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-900/40 flex flex-col gap-1">
-                <span className="text-base">💡</span>
+
+              {/* 5. Rekomendasi Pemkot */}
+              <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-900/40 flex flex-col gap-1.5 hover:border-emerald-500/40 transition-colors">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
                 <span className="text-xs font-bold text-white">Rekomendasi Kebijakan</span>
-                <span className="text-[11px] text-slate-400 leading-snug">Aksi mitigasi konkret & terukur untuk Pemkot Surabaya.</span>
+                <span className="text-[11px] text-slate-400 leading-snug">Aksi mitigasi konkret & terukur untuk instansi Pemkot Surabaya.</span>
               </div>
             </div>
 
-            <div className="pt-2">
-              <button
-                onClick={() => handleGenerateAi(false)}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs md:text-sm shadow-neon-blue transition cursor-pointer active:scale-95"
-              >
-                ⚡ Mulai Generate Analisis AI Kimi Sekarang
-              </button>
+            <div className="pt-2 text-[11px] text-indigo-300/70 font-mono">
+              Silakan klik tombol <strong className="text-cyan-400 font-sans">"Generate Analisis AI"</strong> di header kartu di atas untuk memulai.
             </div>
           </div>
         )}

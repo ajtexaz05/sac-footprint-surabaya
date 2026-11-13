@@ -218,6 +218,7 @@ function App() {
   const [mapOpacity, setMapOpacity] = useState(0.85)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false)
 
   // Kontrol Kalibrasi Interaktif Peta (Bisa digeser manual oleh user & tersimpan di localStorage)
   const [showCalibration, setShowCalibration] = useState(false)
@@ -561,149 +562,366 @@ function App() {
       {/* Background Neon Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-64 bg-blue-600/10 blur-[120px] rounded-full pointer-events-none"></div>
 
-      {/* ==================== HEADER (NAVBAR RESTORED) ==================== */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#050B14]/80 border-b border-blue-900/30 shadow-[0_4px_30px_rgba(0,0,0,0.5)] mb-6">
-        <div className="max-w-6xl mx-auto px-6 lg:px-12 py-4 flex flex-col md:flex-row justify-between items-center relative z-10">
+      {/* ==================== HEADER (NAVBAR NEO-GLASSMORPHISM MODERN) ==================== */}
+      <header className="sticky top-0 z-50 backdrop-blur-2xl bg-[#050B14]/85 border-b border-blue-900/40 shadow-[0_4px_30px_rgba(0,0,0,0.6)] mb-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-12 py-3.5 flex justify-between items-center relative z-10">
           
-          {/* Logo & Mobile Top */}
-          <div className="flex items-center justify-between w-full md:w-auto">
-            <div
+          {/* Logo & Branding */}
+          <div
+            onClick={() => {
+              setCurrentPage('beranda')
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+            className="flex items-center gap-3 cursor-pointer group"
+            title="Kembali ke Beranda Dashboard"
+          >
+            <img
+              src="/img/Logo_STMKG.png"
+              alt="Logo STMKG"
+              className="h-11 w-auto object-contain bg-[#0a1120] rounded-xl p-1 border border-blue-900/50 group-hover:border-cyan-400/60 transition-all duration-300 shadow-sm"
+              onError={(e) => {
+                e.target.onerror = null
+                e.target.outerHTML = `<div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shadow-neon-blue"><span class="text-blue-400 font-bold font-display text-xs">STMKG</span></div>`
+              }}
+            />
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base sm:text-lg font-bold tracking-tight text-white font-display group-hover:text-cyan-300 transition-colors">
+                  SI JAKA PANTAU
+                </h1>
+                <span className="hidden lg:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono bg-blue-950/80 text-cyan-300 border border-cyan-800/40">
+                  v2.6
+                </span>
+              </div>
+              <p className="text-[9px] text-blue-400/80 font-medium hidden sm:block">
+                Sistem Informasi Jejak Karbon dan Polutan Atmosfer Surabaya
+              </p>
+            </div>
+          </div>
+
+          {/* Desktop Navigation (Center Pills Modern) */}
+          <nav className="hidden md:flex items-center gap-1.5 p-1 rounded-full bg-[#0a1120]/90 border border-blue-900/50 shadow-inner">
+            <button
               onClick={() => {
                 setCurrentPage('beranda')
                 window.scrollTo({ top: 0, behavior: 'smooth' })
               }}
-              className="flex items-center gap-3 cursor-pointer group"
-              title="Kembali ke Beranda Dashboard"
+              className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                currentPage === 'beranda'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-neon-blue border border-cyan-400/40'
+                  : 'text-slate-400 hover:text-white hover:bg-blue-900/20 border border-transparent'
+              }`}
             >
-              <img
-                src="/img/Logo_STMKG.png"
-                alt="Logo STMKG"
-                className="h-12 w-auto object-contain bg-[#0a1120] rounded-lg p-1 border border-blue-900/40 group-hover:border-blue-500/50 transition-all duration-300"
-                onError={(e) => {
-                  e.target.onerror = null
-                  e.target.outerHTML = `<div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shadow-neon-blue"><span class="text-blue-400 font-bold font-display text-xs">STMKG</span></div>`
-                }}
-              />
-              <div>
-                <h1 className="text-base md:text-lg font-bold tracking-tight text-white font-display group-hover:text-blue-300 transition-colors">
-                  SAC-Footprint Surabaya
-                </h1>
-                <p className="text-[10px] text-blue-400/80 font-medium hidden sm:block">
-                   Polutan Atmosfer & Emisi Karbon
-                </p>
-              </div>
-            </div>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              <span>Beranda</span>
+            </button>
 
-            {/* Mobile Controls: Bell + Burger */}
-            <div className="flex items-center gap-3 md:hidden">
-              <button 
-                onClick={() => {
-                  setCurrentPage('pustaka')
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-                className="relative p-2 text-slate-400 hover:text-white transition-colors bg-[#0a1120] rounded-full border border-blue-900/40 shadow-inner"
-                title="Buka Pustaka Pembelajaran"
-              >
-                <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            <button
+              onClick={() => {
+                setCurrentPage('pustaka')
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                currentPage === 'pustaka'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-neon-blue border border-cyan-400/40'
+                  : 'text-slate-400 hover:text-white hover:bg-blue-900/20 border border-transparent'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              <span>Pustaka</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setCurrentPage('tentang')
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                currentPage === 'tentang'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-neon-blue border border-cyan-400/40'
+                  : 'text-slate-400 hover:text-white hover:bg-blue-900/20 border border-transparent'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Tentang</span>
+            </button>
+          </nav>
+
+          {/* Right Controls: Bell Notification & Mobile Burger */}
+          <div className="flex items-center gap-2.5">
+            {/* Lonceng Notifikasi: Menampilkan Informasi Model AI Aktif & Changelog Sistem */}
+            <button
+              onClick={() => setIsNotificationOpen(true)}
+              title="Informasi Model AI Aktif & Fitur Pembaruan"
+              className="relative p-2.5 text-slate-300 hover:text-white transition-all bg-[#0a1120] hover:bg-blue-900/30 rounded-full border border-blue-900/50 hover:border-cyan-400/60 shadow-inner group cursor-pointer active:scale-95"
+            >
+              <svg className="w-4 h-4 text-slate-300 group-hover:text-cyan-300 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {/* Indikator Pulsing Cyan */}
+              <span className="absolute top-1 right-1 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400 ring-2 ring-[#050B14]"></span>
+              </span>
+            </button>
+
+            {/* Mobile Hamburger Button */}
+            <button
+              className="md:hidden p-2 text-slate-300 hover:text-white bg-[#0a1120] rounded-xl border border-blue-900/40 cursor-pointer active:scale-95"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="Menu Navigasi Mobile"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {isMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Dropdown Menu (Smooth Modern Drawer) */}
+        {isMenuOpen && (
+          <div className="md:hidden border-t border-blue-900/40 bg-[#050B14]/95 backdrop-blur-2xl px-6 py-4 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+            <button
+              onClick={() => {
+                setCurrentPage('beranda')
+                setIsMenuOpen(false)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className={`w-full px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-between transition-all ${
+                currentPage === 'beranda'
+                  ? 'bg-blue-600/20 text-blue-300 border border-blue-500/50 shadow-neon-blue'
+                  : 'text-slate-300 hover:bg-slate-900/60 border border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
-                <span className="absolute top-0 right-1 block h-2 w-2 rounded-full bg-blue-500 ring-2 ring-[#050B14]"></span>
-              </button>
+                <span>Beranda Dashboard</span>
+              </div>
+              {currentPage === 'beranda' && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-neon-blue"></span>}
+            </button>
+
+            <button
+              onClick={() => {
+                setCurrentPage('pustaka')
+                setIsMenuOpen(false)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className={`w-full px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-between transition-all ${
+                currentPage === 'pustaka'
+                  ? 'bg-blue-600/20 text-blue-300 border border-blue-500/50 shadow-neon-blue'
+                  : 'text-slate-300 hover:bg-slate-900/60 border border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                <span>Pustaka Pembelajaran</span>
+              </div>
+              {currentPage === 'pustaka' && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-neon-blue"></span>}
+            </button>
+
+            <button
+              onClick={() => {
+                setCurrentPage('tentang')
+                setIsMenuOpen(false)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className={`w-full px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-between transition-all ${
+                currentPage === 'tentang'
+                  ? 'bg-blue-600/20 text-blue-300 border border-blue-500/50 shadow-neon-blue'
+                  : 'text-slate-300 hover:bg-slate-900/60 border border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Tentang Aplikasi</span>
+              </div>
+              {currentPage === 'tentang' && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-neon-blue"></span>}
+            </button>
+
+            <div className="pt-2 border-t border-blue-900/30">
               <button
-                className="p-2 text-slate-300 hover:text-white"
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                onClick={() => {
+                  setIsMenuOpen(false)
+                  setIsNotificationOpen(true)
+                }}
+                className="w-full px-4 py-2.5 rounded-xl text-xs font-semibold text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/30 flex items-center justify-between transition"
               >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  {isMenuOpen ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  )}
-                </svg>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                  <span>Info Model AI & Pembaruan Sistem</span>
+                </div>
+                <span className="text-[10px] text-cyan-400/80">v2.6 &rarr;</span>
               </button>
             </div>
           </div>
+        )}
 
-          {/* Desktop & Mobile Menu */}
-          <div className={`${isMenuOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row items-center justify-end flex-1 w-full md:w-auto mt-4 md:mt-0 gap-4 md:gap-6`}>
-            
-            {/* Navigasi Beranda, Pustaka, Tentang (Center di Desktop) */}
-            <nav className="flex flex-col md:flex-row items-center gap-2 w-full md:w-auto md:absolute md:left-1/2 md:-translate-x-1/2">
+        <div className="absolute bottom-0 left-0 w-full h-[1px] neon-border-gradient animate-border-flow"></div>
+      </header>
+
+      {/* ==================== MODAL NOTIFIKASI & STATUS MODEL AI ==================== */}
+      {isNotificationOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
+          <div 
+            className="absolute inset-0" 
+            onClick={() => setIsNotificationOpen(false)}
+          ></div>
+          
+          <div className="relative w-full max-w-2xl bg-[#0a1120] border border-blue-500/40 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.85)] overflow-hidden flex flex-col max-h-[88vh] z-10 animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-5 md:p-6 border-b border-blue-900/40 bg-gradient-to-r from-blue-950/70 via-[#0a1120] to-indigo-950/70 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shadow-neon-blue">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base md:text-lg font-bold text-white font-display">
+                      Pusat Informasi & Pembaruan Sistem
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-950 text-cyan-300 border border-cyan-500/40">
+                      v2.6 Aktif
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Spesifikasi model AI terkini dan catatan rilis fitur platform
+                  </p>
+                </div>
+              </div>
+
               <button
-                onClick={() => {
-                  setCurrentPage('beranda')
-                  setIsMenuOpen(false)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-                className={`px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 transition-all w-full md:w-auto justify-center ${
-                  currentPage === 'beranda'
-                    ? 'bg-blue-900/30 border border-blue-500/40 text-blue-400 shadow-neon-blue'
-                    : 'text-slate-400 hover:text-white hover:bg-[#0a1120] border border-transparent'
-                }`}
+                onClick={() => setIsNotificationOpen(false)}
+                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition cursor-pointer"
+                title="Tutup Modal"
               >
-                <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                <span>Beranda</span>
               </button>
+            </div>
 
-              <button
-                onClick={() => {
-                  setCurrentPage('pustaka')
-                  setIsMenuOpen(false)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-                className={`px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 transition-all w-full md:w-auto justify-center ${
-                  currentPage === 'pustaka'
-                    ? 'bg-blue-900/30 border border-blue-500/40 text-blue-400 shadow-neon-blue'
-                    : 'text-slate-400 hover:text-white hover:bg-[#0a1120] border border-transparent'
-                }`}
-              >
-                <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-                <span>Pustaka</span>
-              </button>
+            {/* Modal Body (Scrollable) */}
+            <div className="p-5 md:p-6 overflow-y-auto custom-scrollbar space-y-6 text-xs md:text-sm">
+              {/* Bagian 1: Status Model AI Saat Ini */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-cyan-300 font-display uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-1.5 h-3.5 bg-cyan-400 rounded-full inline-block shadow-neon-blue"></span>
+                  <span>Status & Konfigurasi Model AI Terpasang</span>
+                </h4>
 
-              <button
-                onClick={() => {
-                  setCurrentPage('tentang')
-                  setIsMenuOpen(false)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-                className={`px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 transition-all w-full md:w-auto justify-center ${
-                  currentPage === 'tentang'
-                    ? 'bg-blue-900/30 border border-blue-500/40 text-blue-400 shadow-neon-blue'
-                    : 'text-slate-400 hover:text-white hover:bg-[#0a1120] border border-transparent'
-                }`}
-              >
-                <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Tentang</span>
-              </button>
-            </nav>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3.5 rounded-2xl bg-[#050B14] border border-blue-900/40 flex flex-col gap-1">
+                    <span className="text-[10px] text-slate-400 font-mono">Model Kecerdasan Buatan</span>
+                    <span className="text-xs md:text-sm font-bold text-white flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                      <span>Kimi K3.1 Pro (Moonshot AI)</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">Model penalaran ilmiah multi-langkah mutakhir</span>
+                  </div>
 
-            {/* Right: Bell Icon Only (Search Bar Dihilangkan) */}
-            <div className="flex items-center justify-end w-full md:w-auto mt-2 md:mt-0">
+                  <div className="p-3.5 rounded-2xl bg-[#050B14] border border-blue-900/40 flex flex-col gap-1">
+                    <span className="text-[10px] text-slate-400 font-mono">Gateway & API Provider</span>
+                    <span className="text-xs md:text-sm font-bold text-white">OpenAgentic API</span>
+                    <span className="text-[10px] text-emerald-400 mt-0.5 font-medium">Koneksi Terotentikasi & Dedicated</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-[#050B14] border border-blue-900/40 flex flex-col gap-1">
+                    <span className="text-[10px] text-slate-400 font-mono">Protokol Transmisi</span>
+                    <span className="text-xs md:text-sm font-bold text-cyan-300">Server-Sent Events (SSE)</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">Streaming langsung chunk-by-chunk tanpa timeout</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-[#050B14] border border-blue-900/40 flex flex-col gap-1">
+                    <span className="text-[10px] text-slate-400 font-mono">Alokasi Token & Output</span>
+                    <span className="text-xs md:text-sm font-bold text-white">4.000 Token Penalaran</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">Filter CoT aktif &bull; 100% Bahasa Indonesia</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bagian 2: Fitur & Pembaruan Sistem Terbaru */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-blue-300 font-display uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-1.5 h-3.5 bg-blue-400 rounded-full inline-block shadow-neon-blue"></span>
+                  <span>Fitur & Pembaruan Platform Terbaru (v2.6)</span>
+                </h4>
+
+                <div className="space-y-2.5">
+                  <div className="p-3.5 rounded-2xl bg-[#050B14] border border-blue-900/30 flex items-start gap-3">
+                    <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 mt-0.5">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-white text-xs md:text-sm">Sintesis AI 5 Dimensi Lengkap</h5>
+                      <p className="text-[11px] text-slate-400 leading-relaxed mt-0.5">
+                        Menghubungkan sebaran spasial, peringkat emisi sektoral EDGAR v2026, dinamika tren temporal bulanan/tahunan, komparasi antar-tahun terpilih, dampak kesehatan, dan rekomendasi aksi mitigasi Pemkot Surabaya.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-[#050B14] border border-blue-900/30 flex items-start gap-3">
+                    <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 mt-0.5">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-white text-xs md:text-sm">Penyederhanaan Kontrol & UI Neo-Glassmorphism</h5>
+                      <p className="text-[11px] text-slate-400 leading-relaxed mt-0.5">
+                        Menghilangkan tombol generate ganda yang redundan menjadi satu tombol utama di header, mengganti seluruh emoji dengan vektor SVG modern, serta menyempurnakan responsivitas navbar mobile.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-[#050B14] border border-blue-900/30 flex items-start gap-3">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 mt-0.5">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-white text-xs md:text-sm">Optimalisasi Skalabilitas & Serverless</h5>
+                      <p className="text-[11px] text-slate-400 leading-relaxed mt-0.5">
+                        Arsitektur Serverless Vercel dengan SSE streaming menjaga kestabilan respon saat diakses banyak pengguna bersamaan, dilengkapi caching sesi browser untuk menghemat konsumsi token API.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-blue-900/40 bg-[#050B14] flex justify-end">
               <button
-                onClick={() => {
-                  setCurrentPage('pustaka')
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-                title="Buka Pustaka Pembelajaran & Dokumen Ilmiah"
-                className="relative p-2.5 text-slate-400 hover:text-white transition-colors bg-[#0a1120] rounded-full border border-blue-900/40 hover:border-blue-500/50 shadow-inner group"
+                onClick={() => setIsNotificationOpen(false)}
+                className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl transition cursor-pointer shadow-neon-blue"
               >
-                <svg className="w-5 h-5 group-hover:scale-110 transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-blue-500 ring-2 ring-[#050B14]"></span>
+                Tutup
               </button>
             </div>
           </div>
         </div>
-        <div className="absolute bottom-0 left-0 w-full h-[1px] neon-border-gradient animate-border-flow"></div>
-      </header>
+      )}
 
       <main className="px-6 lg:px-12 py-8 max-w-6xl mx-auto space-y-10 relative z-10">
         {currentPage === 'pustaka' && <PustakaPage />}
