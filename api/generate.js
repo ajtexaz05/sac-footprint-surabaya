@@ -46,14 +46,14 @@ export default async function handler(req, res) {
         messages: [
           {
             role: 'system',
-            content: 'Anda adalah AI Asisten Pakar Analisis Sains Atmosfer & Jejak Karbon untuk platform Surabaya Atmospheric & Carbon Footprint (SAC-Footprint Surabaya). Berikan ulasan tajam, padat, to-the-point dalam 4 bagian berurutan:\n1. 🗺️ **Peta Spasial & Hotspot Surabaya** (analisis sebaran konsentrasi, gradasi warna, dan koridor emisi tertinggi)\n2. 📈 **Tren Temporal & Komparasi Antar-Tahun** (analisis dinamika grafik, fluktuasi musiman, dan perbandingan antar-tahun)\n3. ⚠️ **Dampak Lingkungan & Kesehatan Warga** (risiko pajanan masyarakat & batasan kolom satelit vs udara ambien)\n4. 💡 **Rekomendasi Kebijakan Mitigasi Pemkot** (langkah konkret terarah untuk dinas terkait Pemkot Surabaya)\nLangsung berikan ulasan to-the-point tanpa kalimat pembuka basa-basi atau penalaran bertele-tele (maksimal 250-300 kata total).'
+            content: 'Kamu adalah Asisten AI SAC-Footprint Surabaya. PENTING: Penalaran internal (thinking) harus sangat singkat (maksimal 2-3 kalimat saja). Jawaban akhir WAJIB 100% BAHASA INDONESIA dalam 4 bagian padat berurutan:\n1. 🗺️ **Peta Spasial & Hotspot Surabaya** (analisis sebaran konsentrasi, gradasi warna, dan koridor emisi tertinggi)\n2. 📈 **Tren Temporal & Komparasi Antar-Tahun** (analisis grafik musiman/tahunan dan perbandingan tahun terpilih)\n3. ⚠️ **Dampak Lingkungan & Kesehatan Warga** (risiko pajanan masyarakat & batasan kolom satelit vs udara ambien)\n4. 💡 **Rekomendasi Kebijakan Mitigasi Pemkot** (langkah konkret terarah untuk Pemkot Surabaya)\nFormat rapi to-the-point, maksimal 250 kata. Seluruh kata dan istilah analisis WAJIB dalam Bahasa Indonesia (dilarang menggunakan bahasa Inggris).'
           },
           { 
             role: 'user', 
             content: promptContext 
           }
         ],
-        max_tokens: 800
+        max_tokens: 1200
       })
     });
 
@@ -89,15 +89,23 @@ export default async function handler(req, res) {
       });
     }
 
-    // Pastikan konten terisi baik dari content maupun reasoning_content jika terjadi truncation
+    // Pastikan konten terisi dalam Bahasa Indonesia
     const choice = data?.choices?.[0];
-    const finalContent = (choice?.message?.content && choice.message.content.trim()) 
-      || (choice?.message?.reasoning_content && choice.message.reasoning_content.trim())
-      || (typeof choice?.text === 'string' && choice.text.trim()) 
-      || '';
+    let finalContent = (choice?.message?.content && choice.message.content.trim()) || '';
+
+    // Jika content utama kosong karena terputus di fase reasoning, ekstrak bagian Bahasa Indonesia dari reasoning
+    if (!finalContent && choice?.message?.reasoning_content) {
+      const rawReasoning = choice.message.reasoning_content;
+      const indonesianMatch = rawReasoning.match(/(?:🗺️|1\.|###\s*1)[^\0]*/);
+      finalContent = indonesianMatch ? indonesianMatch[0].trim() : rawReasoning.trim();
+    }
+
+    if (!finalContent && typeof choice?.text === 'string') {
+      finalContent = choice.text.trim();
+    }
 
     if (data?.choices?.[0]?.message) {
-      data.choices[0].message.content = finalContent;
+      data.choices[0].message.content = finalContent || 'Gagal memuat teks analisis Bahasa Indonesia.';
     }
 
     // Berikan header Cache-Control pada Vercel Edge CDN agar request serupa dari user lain langsung dilayani dari cache

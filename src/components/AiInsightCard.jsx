@@ -104,11 +104,11 @@ export default function AiInsightCard({
 - Peringkat Hotspot / Kontributor Tertinggi: ${hotspotDesc}
 - Komparasi Antar-Tahun (${yearA} vs ${yearB}): ${komparasiDesc}
 
-Berikan ulasan tajam, padat, to-the-point dalam 4 bagian:
-1. 🗺️ **Peta Spasial & Hotspot Surabaya** (gradasi sebaran spasial & kawasan konsentrasi emisi tertinggi)
-2. 📈 **Tren Temporal & Komparasi Antar-Tahun** (analisis fluktuasi grafik ${chartView} & signifikansi perbandingan ${yearA} vs ${yearB})
-3. ⚠️ **Dampak Lingkungan & Kesehatan Warga** (risiko pajanan masyarakat & catatan kolom vertikal satelit)
-4. 💡 **Rekomendasi Kebijakan Mitigasi Pemkot** (solusi mitigasi terarah bagi Pemkot Surabaya)`
+WAJIB: Berikan ulasan tajam, padat, to-the-point 100% dalam BAHASA INDONESIA dalam 4 bagian berurutan:
+1. 🗺️ **Peta Spasial & Hotspot Surabaya** (analisis sebaran spasial, gradasi warna, dan koridor konsentrasi tertinggi)
+2. 📈 **Tren Temporal & Komparasi Antar-Tahun** (analisis fluktuasi grafik ${chartView} dan perbandingan ${yearA} vs ${yearB})
+3. ⚠️ **Dampak Lingkungan & Kesehatan Warga** (risiko pajanan masyarakat & catatan batasan kolom satelit vs udara ambien)
+4. 💡 **Rekomendasi Kebijakan Mitigasi Pemkot** (langkah konkret terarah untuk Pemkot Surabaya)`
 
     try {
       const response = await fetch('/api/generate', {
@@ -144,10 +144,20 @@ Berikan ulasan tajam, padat, to-the-point dalam 4 bagian:
       }
 
       const choice = data?.choices?.[0]
-      const text = (choice?.message?.content && choice.message.content.trim())
-        || (choice?.message?.reasoning_content && choice.message.reasoning_content.trim())
-        || (typeof choice?.text === 'string' && choice.text.trim())
-        || 'Tidak ada teks respon yang diterima dari model AI.'
+      let text = (choice?.message?.content && choice.message.content.trim()) || ''
+
+      // Jika content kosong karena tersimpan di reasoning_content
+      if (!text && choice?.message?.reasoning_content) {
+        const raw = choice.message.reasoning_content
+        const idMatch = raw.match(/(?:🗺️|1\.|###\s*1)[^\0]*/)
+        text = idMatch ? idMatch[0].trim() : raw.trim()
+      }
+
+      if (!text) {
+        text = typeof choice?.text === 'string' && choice.text.trim()
+          ? choice.text.trim()
+          : 'Tidak ada teks respon yang diterima dari model AI.'
+      }
 
       setAiOutput(text)
       setLastGeneratedContext(`${isAtmosfer ? indicatorMeta.label : sectorMeta.short} • ${monthName} ${activeYear}`)
@@ -304,17 +314,21 @@ Berikan ulasan tajam, padat, to-the-point dalam 4 bagian:
 
         {/* Tampilan Output Analisis Lengkap Hasil Generate AI */}
         {!isLoading && aiOutput && (
-          <div className="bg-[#050B14]/85 p-6 rounded-2xl border border-indigo-500/40 shadow-inner space-y-3">
+          <div className="bg-[#050B14]/85 p-6 rounded-2xl border border-indigo-500/40 shadow-inner space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-indigo-400 border-b border-indigo-900/40 pb-2.5 font-mono">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-neon-emerald"></span>
                 <span>Analisis AI Komprehensif: <strong>{lastGeneratedContext}</strong></span>
               </span>
-              <span className="text-slate-400 text-[10px]">
-                Didukung Kimi K3.1 Pro • OpenAgentic API
-              </span>
+              <div className="flex items-center gap-2 text-slate-400 text-[10px]">
+                <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 text-[10px] font-sans font-medium">
+                  🇮🇩 Bahasa Indonesia
+                </span>
+                <span>Didukung Kimi K3.1 Pro • OpenAgentic API</span>
+              </div>
             </div>
-            <div className="space-y-2">
+            {/* Kotak responsif: tinggi otomatis menyesuaikan konten, dan jika panjang dapat di-scroll dengan elegan */}
+            <div className="max-h-[560px] overflow-y-auto pr-2 custom-scrollbar space-y-2">
               {renderFormattedAiText(aiOutput)}
             </div>
           </div>
