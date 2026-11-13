@@ -127,17 +127,87 @@ Berdasarkan seluruh data konteks di atas, buatkan laporan ulasan sintesis ilmiah
 
 Uraikan secara panjang, detail, ilmiah, dan berbobot dari Bagian 1 sampai selesai Bagian 5 tuntas tanpa terpotong (100% Bahasa Indonesia).`
 
+    const systemInstruction = `Kamu adalah Asisten Ahli AI Senior untuk SI JAKA PANTAU (Sistem Informasi Jejak Karbon dan Polutan Atmosfer Surabaya).
+Tuliskan laporan analisis sintesis ilmiah mendalam, kaya data numerik, dan lengkap dalam 5 bagian terstruktur:
+### 1. Peta Spasial & Koridor Hotspot Surabaya
+Ulas pola sebaran spasial, interpretasikan rentang skala visual peta (min-max), dan bedah koridor hotspot konsentrasi tertinggi di Surabaya dengan menghubungkannya ke kawasan industri, pelabuhan, atau lalu lintas.
+
+### 2. Peringkat Emisi Sektoral & Kontributor Antropogenik Utama
+Ulas peringkat kontributor emisi EDGAR v2026 Kota Surabaya (sektor terbesar, persentase kontribusi, dan mekanisme aktivitasnya terhadap pelepasan polutan/karbon kota).
+
+### 3. Dinamika Tren Temporal & Komparasi Antar-Tahun
+Analisis kurva grafik temporal (titik puncak dan terendah beserta faktor pemicunya). Bedah hasil komparasi antar-tahun pembanding terpilih (arah perubahan, angka, persentase, dan implikasi jangka panjangnya).
+
+### 4. Analisis Risiko Lingkungan & Kesehatan Warga
+Ulas dampak pajanan bagi kesehatan warga dan kelompok rentan (anak-anak, lansia, pekerja luar ruangan). Berikan edukasi ilmiah mengenai batasan data kolom troposfer satelit dibanding konsentrasi ambien di permukaan tanah.
+
+### 5. Rekomendasi Kebijakan Mitigasi Terukur Pemkot Surabaya
+Rumuskan program aksi terukur dan aplikatif untuk instansi Pemkot Surabaya (DLH, Dishub, dsb.), mencakup pengawasan emisi sumber bergerak dan industri, penataan koridor transportasi, sensor darat, dan RTH.
+
+PANDUAN INTERPRETASI DATA:
+- Seluruh angka pada konteks adalah data resmi dashboard SI JAKA PANTAU.
+- Nilai kolom troposfer satelit SO2/O3/NO2 dinyatakan dalam mol/m². Nilai sangat kecil mendekati nol atau negatif pada grafik bulanan adalah noise instrumen/latar bersih troposfer.
+- Matriks EDGAR v2026 adalah basis inventaris sumber emisi antropogenik kota (bahan bakar, industri, transportasi).
+
+PEDOMAN PENULISAN:
+- Gunakan nama resmi aplikasi: SI JAKA PANTAU.
+- Bahasa: 100% BAHASA INDONESIA yang baku, ilmiah, dan formal.
+- Tuliskan ulasan dalam 2-3 poin paragraf mendalam per bagian (sekitar 800 - 1.100 kata).
+- Selesaikan seluruh Bagian 1 sampai selesai Bagian 5 tuntas tanpa terpotong!`
+
     try {
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          promptContext,
-          model: 'kimi-k3.1-pro'
+      // 1. Ambil API Key secara aman dari server (/api/key) untuk streaming langsung dari peramban (bebas batas 60 detik Vercel)
+      let clientApiKey = null
+      try {
+        const keyRes = await fetch('/api/key')
+        if (keyRes.ok) {
+          const keyJson = await keyRes.json()
+          clientApiKey = keyJson.apiKey
+        }
+      } catch {}
+
+      let response = null
+      let isDirectStream = false
+
+      if (clientApiKey) {
+        try {
+          response = await fetch('https://openagentic.id/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${clientApiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: 'kimi-k3.1-pro',
+              stream: true,
+              messages: [
+                { role: 'system', content: systemInstruction },
+                { role: 'user', content: `${promptContext}\n\nTuliskan laporan ulasan 5 bagian lengkap sekarang.` }
+              ],
+              max_tokens: 16384
+            })
+          })
+          if (response.ok) {
+            isDirectStream = true
+          }
+        } catch {
+          response = null
+        }
+      }
+
+      // 2. Jika streaming langsung peramban tidak dapat dijangkau, gunakan jalur serverless proxy /api/generate
+      if (!isDirectStream || !response || !response.ok) {
+        response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            promptContext,
+            model: 'kimi-k3.1-pro'
+          })
         })
-      })
+      }
 
       if (!response.ok) {
         throw new Error(`Server AI merespon dengan status error ${response.status}`)
@@ -176,9 +246,11 @@ Uraikan secara panjang, detail, ilmiah, dan berbobot dari Bagian 1 sampai selesa
                 throw new Error(data.error)
               }
 
-              // Hanya tampilkan jawaban akhir (content), buang monolog penalaran internal Kimi
-              if (data.content) {
-                accumulatedText += data.content
+              // Ekstrak teks konten (kompatibel langsung dengan OpenAgentic delta.content maupun proxy data.content)
+              const contentPiece = isDirectStream ? data.choices?.[0]?.delta?.content : data.content
+
+              if (contentPiece) {
+                accumulatedText += contentPiece
                 setAiOutput(accumulatedText)
               }
             } catch (parseError) {

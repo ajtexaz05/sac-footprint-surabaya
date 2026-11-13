@@ -17,6 +17,13 @@ export default defineConfig(({ mode }) => {
         name: 'local-vercel-api-middleware',
         configureServer(server) {
           // Middleware lokal untuk meniru Vercel Serverless Function /api/generate di localhost
+          server.middlewares.use('/api/key', (req, res) => {
+            const apiKey = process.env.SECRET_AI_API_KEY || env.SECRET_AI_API_KEY
+            res.setHeader('Access-Control-Allow-Origin', '*')
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ apiKey }))
+          })
+
           server.middlewares.use('/api/generate', (req, res) => {
             if (req.method === 'OPTIONS') {
               res.statusCode = 200
@@ -118,7 +125,7 @@ ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
                       { role: 'system', content: systemInstruction },
                       { role: 'user', content: promptContext }
                     ],
-                    max_tokens: 4096
+                    max_tokens: 16384
                   })
                 })
 

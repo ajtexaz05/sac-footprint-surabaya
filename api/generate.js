@@ -94,7 +94,7 @@ ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
           { role: 'system', content: systemInstruction },
           { role: 'user', content: promptContext }
         ],
-        max_tokens: 4096
+        max_tokens: 16384
       })
     });
 
