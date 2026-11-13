@@ -46,7 +46,7 @@ export default defineConfig(({ mode }) => {
                 if (!apiKey) {
                   res.statusCode = 500
                   res.end(JSON.stringify({
-                    error: 'API Key belum disetel di file .env lokal (SECRET_AI_API_KEY). Buat file .env di folder proyek dan isi dengan API Key OpenAgentic Anda untuk pengujian di localhost, atau lakukan pengujian langsung di Vercel.'
+                    error: 'API Key belum disetel di file .env lokal (SECRET_AI_API_KEY). Buat file .env di folder proyek dan isi dengan API Key OpenAgentic Anda.'
                   }))
                   return
                 }
@@ -65,15 +65,37 @@ export default defineConfig(({ mode }) => {
                     messages: [
                       {
                         role: 'system',
-                        content: 'Anda adalah AI Asisten Analisis Spasial dan Emisi. Berikan jawaban dalam 4 poin: 📊 Kondisi & Ringkasan Angka Terkini, 🔍 Analisis Dinamika & Sumber Emisi Surabaya, ⚠️ Dampak Lingkungan & Kesehatan Masyarakat, 💡 Rekomendasi Kebijakan Mitigasi Pemkot Surabaya.'
+                        content: 'Anda adalah AI Asisten Analisis Spasial dan Emisi SAC-Footprint Surabaya. Berikan analisis ringkas, padat, dan langsung to-the-point dalam 4 bagian: 📊 Kondisi & Ringkasan Angka Terkini, 🔍 Analisis Dinamika & Sumber Emisi Surabaya, ⚠️ Dampak Lingkungan & Kesehatan Masyarakat, 💡 Rekomendasi Kebijakan Mitigasi Pemkot Surabaya.'
                       },
                       { role: 'user', content: promptContext }
-                    ]
+                    ],
+                    max_tokens: 800
                   })
                 })
 
-                const data = await openAgenticRes.json()
-                res.statusCode = openAgenticRes.status
+                const rawText = await openAgenticRes.text()
+                let data
+                try {
+                  const match = rawText.match(/\{[\s\S]*\}/)
+                  data = match ? JSON.parse(match[0]) : JSON.parse(rawText)
+                } catch (e) {
+                  res.statusCode = 500
+                  res.end(JSON.stringify({ 
+                    error: 'Gagal mem-parsing balasan dari OpenAgentic: ' + rawText.slice(0, 150) 
+                  }))
+                  return
+                }
+
+                if (!openAgenticRes.ok || data.error) {
+                  const errMsg = typeof data?.error === 'object'
+                    ? data?.error?.message || JSON.stringify(data.error)
+                    : data?.error || `Error dari OpenAgentic (Status ${openAgenticRes.status})`
+                  res.statusCode = openAgenticRes.status || 500
+                  res.end(JSON.stringify({ error: errMsg }))
+                  return
+                }
+
+                res.statusCode = 200
                 res.end(JSON.stringify(data))
               } catch (err) {
                 res.statusCode = 500

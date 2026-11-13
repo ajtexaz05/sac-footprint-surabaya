@@ -1,3 +1,7 @@
+export const config = {
+  maxDuration: 60,
+};
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -19,7 +23,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Normalisasi Model ID OpenAgentic: Kimi K3.1 Pro menggunakan titik 'kimi-k3.1-pro'
+    // Normalisasi Model ID OpenAgentic: Kimi K3.1 Pro resmi adalah 'kimi-k3.1-pro'
     let targetModel = model || 'kimi-k3.1-pro';
     if (targetModel === 'kimi-k3-1-pro') {
       targetModel = 'kimi-k3.1-pro';
@@ -36,28 +40,41 @@ export default async function handler(req, res) {
         messages: [
           {
             role: 'system',
-            content: 'Anda adalah AI Asisten Analisis Spasial dan Emisi. Berikan jawaban dalam 4 poin: 📊 Kondisi & Ringkasan Angka Terkini, 🔍 Analisis Dinamika & Sumber Emisi Surabaya, ⚠️ Dampak Lingkungan & Kesehatan Masyarakat, 💡 Rekomendasi Kebijakan Mitigasi Pemkot Surabaya.'
+            content: 'Anda adalah AI Asisten Analisis Spasial dan Emisi SAC-Footprint Surabaya. Berikan analisis ringkas, padat, dan langsung to-the-point dalam 4 bagian: 📊 Kondisi & Ringkasan Angka Terkini, 🔍 Analisis Dinamika & Sumber Emisi Surabaya, ⚠️ Dampak Lingkungan & Kesehatan Masyarakat, 💡 Rekomendasi Kebijakan Mitigasi Pemkot Surabaya.'
           },
           { 
             role: 'user', 
             content: promptContext 
           }
-        ]
+        ],
+        max_tokens: 800
       })
     });
 
-    const data = await response.json();
+    const rawText = await response.text();
+    let data;
+    try {
+      // Membersihkan teks jika terdapat trailing SSE 'data: [DONE]' dari proxy OpenAgentic
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      data = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(rawText);
+    } catch (parseErr) {
+      console.error('Failed to parse OpenAgentic response:', rawText);
+      return res.status(500).json({ 
+        error: 'Format balasan dari server AI OpenAgentic tidak valid.' 
+      });
+    }
 
     if (!response.ok || data.error) {
       console.error('OpenAgentic API Error Response:', data);
-      return res.status(response.status || 500).json({ 
-        error: data?.error?.message || data?.error || 'Gagal menerima respon valid dari OpenAgentic.' 
-      });
+      const errMsg = typeof data?.error === 'object' 
+        ? data?.error?.message || JSON.stringify(data.error)
+        : data?.error || `Error dari OpenAgentic (Status ${response.status})`;
+      return res.status(response.status || 500).json({ error: errMsg });
     }
 
     return res.status(200).json(data);
   } catch (error) {
     console.error('AI API Server Error:', error);
-    return res.status(500).json({ error: 'Gagal terhubung ke server AI OpenAgentic.' });
+    return res.status(500).json({ error: 'Gagal terhubung ke server AI OpenAgentic: ' + error.message });
   }
 }

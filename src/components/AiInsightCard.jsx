@@ -73,7 +73,9 @@ Tolong berikan analisis komprehensif, interpretasi makna angka tersebut, dan rek
       }
 
       if (!response.ok || data.error) {
-        throw new Error(data?.error || `Gagal menghubungi server AI (Status ${response.status})`)
+        const rawErr = data?.error || `Gagal menghubungi server AI (Status ${response.status})`
+        const msg = typeof rawErr === 'object' ? rawErr.message || JSON.stringify(rawErr) : String(rawErr)
+        throw new Error(msg)
       }
 
       const text = data?.choices?.[0]?.message?.content || 'Tidak ada teks respon yang diterima dari model AI.'
@@ -81,7 +83,8 @@ Tolong berikan analisis komprehensif, interpretasi makna angka tersebut, dan rek
       setLastGeneratedContext(`${currentContext.itemTerpilih} • ${currentContext.periode}`)
     } catch (err) {
       console.error('AI Generation Error:', err)
-      setErrorMsg(err.message || 'Terjadi kesalahan saat memproses permintaan AI.')
+      const message = typeof err?.message === 'object' ? JSON.stringify(err.message) : (err?.message || 'Terjadi kesalahan saat memproses permintaan AI.')
+      setErrorMsg(message)
     } finally {
       setIsLoading(false)
     }
@@ -175,7 +178,7 @@ Tolong berikan analisis komprehensif, interpretasi makna angka tersebut, dan rek
           <div className="space-y-3 py-4 animate-pulse">
             <div className="flex items-center gap-2 text-indigo-300 text-xs font-semibold">
               <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-ping"></span>
-              <span>Model AI sedang mengekstrak wawasan spasial Surabaya ({isAtmosfer ? indicatorMeta.label : sectorMeta.short} • {monthName} {activeYear})...</span>
+              <span>Model Kimi K3.1 Pro sedang melakukan penalaran & analisis spasial Surabaya ({isAtmosfer ? indicatorMeta.label : sectorMeta.short} • {monthName} {activeYear}). Mohon tunggu sebentar (~20-30 detik)...</span>
             </div>
             <div className="h-3 bg-indigo-900/40 rounded-full w-5/6"></div>
             <div className="h-3 bg-indigo-900/30 rounded-full w-full"></div>
