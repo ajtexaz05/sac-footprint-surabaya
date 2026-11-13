@@ -57,7 +57,7 @@ Tolong berikan analisis komprehensif, interpretasi makna angka tersebut, dan rek
         },
         body: JSON.stringify({
           promptContext,
-          model: 'meta-llama/llama-3-8b-instruct:free'
+          model: 'kimi-k3-1-pro'
         })
       })
 
