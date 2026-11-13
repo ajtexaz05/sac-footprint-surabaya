@@ -78,7 +78,7 @@ ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
 - Gunakan nama resmi aplikasi: SI JAKA PANTAU.
 - Bahasa: 100% BAHASA INDONESIA yang baku, formal, dan ilmiah.
 - Penalaran internal (thinking) WAJIB SANGAT SINGKAT (maksimal 1-2 kalimat). Jangan berdiskusi panjang dalam thinking, LANGSUNG mulai tulis ulasan di output akhir dalam 5-10 detik pertama!
-- Tuliskan 2-3 poin paragraf yang padat data konkret, analitis, mendalam, dan langsung to-the-point tanpa kalimat pembuka basa-basi.
+- Tuliskan 2-3 poin paragraf yang padat data konkret, analitis, mendalam, dan langsung to-the-point tanpa kalimat pembuka basa-basi (sekitar 700 - 850 kata).
 - Tuliskan lengkap dan tuntas dari Bagian 1 sampai selesai Bagian 5 tanpa terpotong!`;
 
     const openAgenticRes = await fetch('https://openagentic.id/api/v1/chat/completions', {
@@ -94,7 +94,7 @@ ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
           { role: 'system', content: systemInstruction },
           { role: 'user', content: promptContext }
         ],
-        max_tokens: 8192
+        max_tokens: 4096
       })
     });
 
