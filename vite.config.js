@@ -35,9 +35,6 @@ export default defineConfig(({ mode }) => {
             })
 
             req.on('end', async () => {
-              res.setHeader('Content-Type', 'application/json')
-              res.setHeader('Access-Control-Allow-Origin', '*')
-
               try {
                 const parsed = JSON.parse(body || '{}')
                 const { promptContext, model } = parsed
@@ -45,6 +42,7 @@ export default defineConfig(({ mode }) => {
 
                 if (!apiKey) {
                   res.statusCode = 500
+                  res.setHeader('Content-Type', 'application/json')
                   res.end(JSON.stringify({
                     error: 'API Key belum disetel di file .env lokal (SECRET_AI_API_KEY). Buat file .env di folder proyek dan isi dengan API Key OpenAgentic Anda.'
                   }))
@@ -54,83 +52,94 @@ export default defineConfig(({ mode }) => {
                 let targetModel = model || 'kimi-k3.1-pro'
                 if (targetModel === 'kimi-k3-1-pro') targetModel = 'kimi-k3.1-pro'
 
-                const controller = new AbortController()
-                const timeoutId = setTimeout(() => controller.abort(), 54000)
+                // Set SSE Headers untuk streaming real-time
+                res.writeHead(200, {
+                  'Content-Type': 'text/event-stream; charset=utf-8',
+                  'Cache-Control': 'no-cache, no-transform',
+                  'Connection': 'keep-alive',
+                  'Access-Control-Allow-Origin': '*'
+                })
 
                 const openAgenticRes = await fetch('https://openagentic.id/api/v1/chat/completions', {
                   method: 'POST',
-                  signal: controller.signal,
                   headers: {
                     'Authorization': `Bearer ${apiKey}`,
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
                     model: targetModel,
+                    stream: true,
                     messages: [
                       {
                         role: 'system',
-                        content: 'Kamu adalah Asisten AI SAC-Footprint Surabaya. PENTING: Penalaran internal (thinking) harus sangat singkat (maksimal 2-3 kalimat saja). Jawaban akhir WAJIB 100% BAHASA INDONESIA dalam 4 bagian padat berurutan:\n1. 🗺️ **Peta Spasial & Hotspot Surabaya** (analisis sebaran konsentrasi, gradasi warna, dan koridor emisi tertinggi)\n2. 📈 **Tren Temporal & Komparasi Antar-Tahun** (analisis grafik musiman/tahunan dan perbandingan tahun terpilih)\n3. ⚠️ **Dampak Lingkungan & Kesehatan Warga** (risiko pajanan masyarakat & batasan kolom satelit vs udara ambien)\n4. 💡 **Rekomendasi Kebijakan Mitigasi Pemkot** (langkah konkret terarah untuk Pemkot Surabaya)\nFormat rapi to-the-point, maksimal 250 kata. Seluruh kata dan istilah analisis WAJIB dalam Bahasa Indonesia (dilarang menggunakan bahasa Inggris).'
+                        content: 'Kamu adalah Asisten Ahli AI SAC-Footprint Surabaya. Berikan analisis ilmiah mendalam, komprehensif, dan solutif dalam 4 bagian utama terstruktur:\n1. 🗺️ **Analisis Peta Spasial & Hotspot Surabaya** (sebaran konsentrasi, gradasi warna peta, dan koridor emisi utama)\n2. 📈 **Tren Dinamika Temporal & Komparasi Antar-Tahun** (fluktuasi grafik bulanan/tahunan, pengaruh musim/meteorologi, dan perbandingan tahun terpilih)\n3. ⚠️ **Dampak Lingkungan & Kesehatan Masyarakat** (risiko pajanan warga, standar kesehatan, dan catatan kolom satelit vertikal vs udara ambien)\n4. 💡 **Rekomendasi Kebijakan Mitigasi Pemkot Surabaya** (solusi konkret tata ruang, regulasi transportasi/industri, dan aksi mitigasi dinas terkait)\n\nKETENTUAN MUTLAK:\n- Seluruh jawaban akhir WAJIB 100% dalam BAHASA INDONESIA yang baku dan profesional.\n- Sajikan ulasan yang kaya informasi dan berbobot tanpa kalimat pembuka basa-basi.'
                       },
                       { role: 'user', content: promptContext }
                     ],
-                    max_tokens: 1200
+                    max_tokens: 2000
                   })
                 })
 
-                clearTimeout(timeoutId)
+                if (!openAgenticRes.ok) {
+                  const errText = await openAgenticRes.text()
+                  let errMsg = `Error dari OpenAgentic (Status ${openAgenticRes.status})`
+                  let isQuota = false
+                  try {
+                    const errJson = JSON.parse(errText)
+                    errMsg = errJson?.error?.message || errMsg
+                    isQuota = openAgenticRes.status === 402 || openAgenticRes.status === 429 || /quota|credit|saldo|balance|exceeded|habis|limit|insufficient/i.test(errMsg)
+                  } catch {}
 
-                const rawText = await openAgenticRes.text()
-                let data
-                try {
-                  const match = rawText.match(/\{[\s\S]*\}/)
-                  data = match ? JSON.parse(match[0]) : JSON.parse(rawText)
-                } catch (e) {
-                  res.statusCode = 500
-                  res.end(JSON.stringify({ 
-                    error: 'Gagal mem-parsing balasan dari OpenAgentic: ' + rawText.slice(0, 150) 
-                  }))
+                  res.write(`data: ${JSON.stringify({ error: errMsg, isQuotaExhausted: isQuota })}\n\n`)
+                  res.end()
                   return
                 }
 
-                if (!openAgenticRes.ok || data.error) {
-                  const errMsg = typeof data?.error === 'object'
-                    ? data?.error?.message || JSON.stringify(data.error)
-                    : data?.error || `Error dari OpenAgentic (Status ${openAgenticRes.status})`
+                const reader = openAgenticRes.body.getReader()
+                const decoder = new TextDecoder('utf-8')
+                let buffer = ''
+                let lastKeepAlive = Date.now()
 
-                  const isQuotaExhausted = openAgenticRes.status === 402 || 
-                                           openAgenticRes.status === 429 || 
-                                           /quota|credit|saldo|balance|exceeded|habis|limit|insufficient|upgrade plan/i.test(errMsg)
+                while (true) {
+                  const { done, value } = await reader.read()
+                  if (done) break
 
-                  res.statusCode = openAgenticRes.status || 500
-                  res.end(JSON.stringify({ error: errMsg, isQuotaExhausted }))
-                  return
+                  buffer += decoder.decode(value, { stream: true })
+                  const lines = buffer.split('\n')
+                  buffer = lines.pop() || ''
+
+                  for (const line of lines) {
+                    const trimmed = line.trim()
+                    if (!trimmed || trimmed === 'data: [DONE]') continue
+
+                    if (trimmed.startsWith('data: ')) {
+                      try {
+                        const parsed = JSON.parse(trimmed.slice(6))
+                        const delta = parsed.choices?.[0]?.delta
+
+                        // Kirim status keepalive saat AI sedang dalam tahap reasoning
+                        if (delta?.reasoning_content) {
+                          const now = Date.now()
+                          if (now - lastKeepAlive > 3000) {
+                            lastKeepAlive = now
+                            res.write(`data: ${JSON.stringify({ status: 'thinking' })}\n\n`)
+                          }
+                        }
+
+                        // Kirim teks jawaban akhir (content), buang monolog reasoning internal Kimi
+                        if (delta?.content) {
+                          res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`)
+                        }
+                      } catch {}
+                    }
+                  }
                 }
 
-                // Normalisasi isi konten dalam Bahasa Indonesia
-                const choice = data?.choices?.[0]
-                let finalContent = (choice?.message?.content && choice.message.content.trim()) || ''
-
-                if (!finalContent && choice?.message?.reasoning_content) {
-                  const rawReasoning = choice.message.reasoning_content
-                  const indonesianMatch = rawReasoning.match(/(?:🗺️|1\.|###\s*1)[^\0]*/)
-                  finalContent = indonesianMatch ? indonesianMatch[0].trim() : rawReasoning.trim()
-                }
-
-                if (!finalContent && typeof choice?.text === 'string') {
-                  finalContent = choice.text.trim()
-                }
-
-                if (data?.choices?.[0]?.message) {
-                  data.choices[0].message.content = finalContent || 'Gagal memuat teks analisis Bahasa Indonesia.'
-                }
-
-                res.statusCode = 200
-                res.end(JSON.stringify(data))
+                res.write('data: [DONE]\n\n')
+                res.end()
               } catch (err) {
-                res.statusCode = 500
-                res.end(JSON.stringify({
-                  error: err.message || 'Gagal memproses permintaan di local development server.'
-                }))
+                res.write(`data: ${JSON.stringify({ error: err.message || 'Gagal memproses permintaan di local development server.' })}\n\n`)
+                res.end()
               }
             })
           })

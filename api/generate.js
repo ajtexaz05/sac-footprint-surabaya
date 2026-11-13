@@ -4,6 +4,9 @@ export const config = {
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     return res.status(200).end();
   }
 
@@ -11,115 +14,108 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { promptContext, model } = req.body;
-  
-  // Mengambil API Key dari Environment Variable Vercel
-  const apiKey = process.env.SECRET_AI_API_KEY; 
+  const { promptContext, model } = req.body || {};
+  const apiKey = process.env.SECRET_AI_API_KEY;
 
   if (!apiKey) {
-    return res.status(500).json({ 
-      error: 'API Key server belum dikonfigurasi pada Environment Variables Vercel (SECRET_AI_API_KEY).' 
+    return res.status(500).json({
+      error: 'API Key server belum dikonfigurasi pada Environment Variables Vercel (SECRET_AI_API_KEY).'
     });
   }
 
-  // Setup AbortController dengan batas waktu 54 detik (sebelum batas 60 detik Vercel Serverless Function)
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 54000);
+  // Set SSE Streaming Headers agar respons langsung mengalir ke browser tanpa terkena timeout
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+    'Access-Control-Allow-Origin': '*'
+  });
 
   try {
-    // Normalisasi Model ID OpenAgentic: Kimi K3.1 Pro resmi adalah 'kimi-k3.1-pro'
     let targetModel = model || 'kimi-k3.1-pro';
-    if (targetModel === 'kimi-k3-1-pro') {
-      targetModel = 'kimi-k3.1-pro';
-    }
+    if (targetModel === 'kimi-k3-1-pro') targetModel = 'kimi-k3.1-pro';
 
-    // Catatan penting: Model reasoning Kimi K3.1 Pro TIDAK mendukung parameter 'temperature' (akan throw HTTP 400 jika ada).
-    const response = await fetch('https://openagentic.id/api/v1/chat/completions', {
+    const openAgenticRes = await fetch('https://openagentic.id/api/v1/chat/completions', {
       method: 'POST',
-      signal: controller.signal,
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model: targetModel,
+        stream: true,
         messages: [
           {
             role: 'system',
-            content: 'Kamu adalah Asisten AI SAC-Footprint Surabaya. PENTING: Penalaran internal (thinking) harus sangat singkat (maksimal 2-3 kalimat saja). Jawaban akhir WAJIB 100% BAHASA INDONESIA dalam 4 bagian padat berurutan:\n1. 🗺️ **Peta Spasial & Hotspot Surabaya** (analisis sebaran konsentrasi, gradasi warna, dan koridor emisi tertinggi)\n2. 📈 **Tren Temporal & Komparasi Antar-Tahun** (analisis grafik musiman/tahunan dan perbandingan tahun terpilih)\n3. ⚠️ **Dampak Lingkungan & Kesehatan Warga** (risiko pajanan masyarakat & batasan kolom satelit vs udara ambien)\n4. 💡 **Rekomendasi Kebijakan Mitigasi Pemkot** (langkah konkret terarah untuk Pemkot Surabaya)\nFormat rapi to-the-point, maksimal 250 kata. Seluruh kata dan istilah analisis WAJIB dalam Bahasa Indonesia (dilarang menggunakan bahasa Inggris).'
+            content: 'Kamu adalah Asisten Ahli AI SAC-Footprint Surabaya. Berikan analisis ilmiah mendalam, komprehensif, dan solutif dalam 4 bagian utama terstruktur:\n1. 🗺️ **Analisis Peta Spasial & Hotspot Surabaya** (sebaran konsentrasi, gradasi warna peta, dan koridor emisi utama)\n2. 📈 **Tren Dinamika Temporal & Komparasi Antar-Tahun** (fluktuasi grafik bulanan/tahunan, pengaruh musim/meteorologi, dan perbandingan tahun terpilih)\n3. ⚠️ **Dampak Lingkungan & Kesehatan Masyarakat** (risiko pajanan warga, standar kesehatan, dan catatan kolom satelit vertikal vs udara ambien)\n4. 💡 **Rekomendasi Kebijakan Mitigasi Pemkot Surabaya** (solusi konkret tata ruang, regulasi transportasi/industri, dan aksi mitigasi dinas terkait)\n\nKETENTUAN MUTLAK:\n- Seluruh jawaban akhir WAJIB 100% dalam BAHASA INDONESIA yang baku dan profesional.\n- Sajikan ulasan yang kaya informasi dan berbobot tanpa kalimat pembuka basa-basi.'
           },
-          { 
-            role: 'user', 
-            content: promptContext 
-          }
+          { role: 'user', content: promptContext }
         ],
-        max_tokens: 1200
+        max_tokens: 2000
       })
     });
 
-    clearTimeout(timeoutId);
+    if (!openAgenticRes.ok) {
+      const errText = await openAgenticRes.text();
+      let errMsg = `Error dari OpenAgentic (Status ${openAgenticRes.status})`;
+      let isQuota = false;
+      try {
+        const errJson = JSON.parse(errText);
+        errMsg = errJson?.error?.message || errMsg;
+        isQuota = openAgenticRes.status === 402 || openAgenticRes.status === 429 || /quota|credit|saldo|balance|exceeded|habis|limit|insufficient/i.test(errMsg);
+      } catch {}
 
-    const rawText = await response.text();
-    let data;
-    try {
-      // Membersihkan teks jika terdapat trailing SSE 'data: [DONE]' dari proxy OpenAgentic
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      data = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(rawText);
-    } catch (parseErr) {
-      console.error('Failed to parse OpenAgentic response:', rawText);
-      return res.status(500).json({ 
-        error: 'Format balasan dari server AI OpenAgentic tidak valid.' 
-      });
+      res.write(`data: ${JSON.stringify({ error: errMsg, isQuotaExhausted: isQuota })}\n\n`);
+      res.end();
+      return;
     }
 
-    if (!response.ok || data.error) {
-      console.error('OpenAgentic API Error Response:', data);
-      const errMsg = typeof data?.error === 'object' 
-        ? data?.error?.message || JSON.stringify(data.error)
-        : data?.error || `Error dari OpenAgentic (Status ${response.status})`;
+    const reader = openAgenticRes.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+    let lastKeepAlive = Date.now();
 
-      // Deteksi apakah kegagalan disebabkan kuota token atau saldo habis
-      const isQuotaExhausted = response.status === 402 || 
-                               response.status === 429 || 
-                               /quota|credit|saldo|balance|exceeded|habis|limit|insufficient|upgrade plan/i.test(errMsg);
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-      return res.status(response.status || 500).json({ 
-        error: errMsg,
-        isQuotaExhausted
-      });
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed === 'data: [DONE]') continue;
+
+        if (trimmed.startsWith('data: ')) {
+          try {
+            const parsed = JSON.parse(trimmed.slice(6));
+            const delta = parsed.choices?.[0]?.delta;
+
+            // Jika Kimi sedang dalam tahap penalaran internal (reasoning), kirim keep-alive status agar koneksi tetap segar
+            if (delta?.reasoning_content) {
+              const now = Date.now();
+              if (now - lastKeepAlive > 3000) {
+                lastKeepAlive = now;
+                res.write(`data: ${JSON.stringify({ status: 'thinking' })}\n\n`);
+              }
+            }
+
+            // HANYA kirim teks jawaban akhir (content), abaikan dan buang monolog reasoning internal Kimi
+            if (delta?.content) {
+              res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
+            }
+          } catch {}
+        }
+      }
     }
 
-    // Pastikan konten terisi dalam Bahasa Indonesia
-    const choice = data?.choices?.[0];
-    let finalContent = (choice?.message?.content && choice.message.content.trim()) || '';
-
-    // Jika content utama kosong karena terputus di fase reasoning, ekstrak bagian Bahasa Indonesia dari reasoning
-    if (!finalContent && choice?.message?.reasoning_content) {
-      const rawReasoning = choice.message.reasoning_content;
-      const indonesianMatch = rawReasoning.match(/(?:🗺️|1\.|###\s*1)[^\0]*/);
-      finalContent = indonesianMatch ? indonesianMatch[0].trim() : rawReasoning.trim();
-    }
-
-    if (!finalContent && typeof choice?.text === 'string') {
-      finalContent = choice.text.trim();
-    }
-
-    if (data?.choices?.[0]?.message) {
-      data.choices[0].message.content = finalContent || 'Gagal memuat teks analisis Bahasa Indonesia.';
-    }
-
-    // Berikan header Cache-Control pada Vercel Edge CDN agar request serupa dari user lain langsung dilayani dari cache
-    res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=43200');
-
-    return res.status(200).json(data);
-  } catch (error) {
-    clearTimeout(timeoutId);
-    console.error('AI API Server Error:', error);
-    if (error.name === 'AbortError') {
-      return res.status(504).json({
-        error: 'Waktu penalaran server AI OpenAgentic melebihi batas waktu (54 detik). Silakan coba klik tombol Generate kembali.'
-      });
-    }
-    return res.status(500).json({ error: 'Gagal terhubung ke server AI OpenAgentic: ' + error.message });
+    res.write('data: [DONE]\n\n');
+    res.end();
+  } catch (err) {
+    console.error('Serverless Stream Error:', err);
+    res.write(`data: ${JSON.stringify({ error: 'Terjadi gangguan koneksi ke server AI: ' + err.message })}\n\n`);
+    res.end();
   }
 }

@@ -122,51 +122,63 @@ WAJIB: Berikan ulasan tajam, padat, to-the-point 100% dalam BAHASA INDONESIA dal
         })
       })
 
-      const rawText = await response.text()
-      let data
-      try {
-        const match = rawText.match(/\{[\s\S]*\}/)
-        data = match ? JSON.parse(match[0]) : JSON.parse(rawText)
-      } catch {
-        throw new Error('Respon server tidak valid atau kosong.')
+      if (!response.ok) {
+        throw new Error(`Server AI merespon dengan status error ${response.status}`)
       }
 
-      if (!response.ok || data.error) {
-        const rawErr = data?.error || `Gagal menghubungi server AI (Status ${response.status})`
-        const msg = typeof rawErr === 'object' ? rawErr.message || JSON.stringify(rawErr) : String(rawErr)
-
-        // Deteksi jika kuota token habis
-        if (data?.isQuotaExhausted || /quota|credit|saldo|balance|exceeded|habis|limit|insufficient|upgrade plan/i.test(msg)) {
-          setIsQuotaExhausted(true)
-        }
-
-        throw new Error(msg)
-      }
-
-      const choice = data?.choices?.[0]
-      let text = (choice?.message?.content && choice.message.content.trim()) || ''
-
-      // Jika content kosong karena tersimpan di reasoning_content
-      if (!text && choice?.message?.reasoning_content) {
-        const raw = choice.message.reasoning_content
-        const idMatch = raw.match(/(?:🗺️|1\.|###\s*1)[^\0]*/)
-        text = idMatch ? idMatch[0].trim() : raw.trim()
-      }
-
-      if (!text) {
-        text = typeof choice?.text === 'string' && choice.text.trim()
-          ? choice.text.trim()
-          : 'Tidak ada teks respon yang diterima dari model AI.'
-      }
-
-      setAiOutput(text)
       setLastGeneratedContext(`${isAtmosfer ? indicatorMeta.label : sectorMeta.short} • ${monthName} ${activeYear}`)
 
-      // Simpan ke cache sesi agar instan saat dikunjungi kembali
-      try {
-        sessionStorage.setItem(currentCacheKey, text)
-      } catch {
-        // Abaikan jika quota storage penuh
+      // Membaca SSE Stream secara real-time
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder('utf-8')
+      let accumulatedText = ''
+      let buffer = ''
+      let detectedQuota = false
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed || trimmed === 'data: [DONE]') continue
+
+          if (trimmed.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(trimmed.slice(6))
+
+              if (data.error) {
+                if (data.isQuotaExhausted) {
+                  detectedQuota = true
+                  setIsQuotaExhausted(true)
+                }
+                throw new Error(data.error)
+              }
+
+              // Hanya tampilkan jawaban akhir (content), buang monolog penalaran internal Kimi
+              if (data.content) {
+                accumulatedText += data.content
+                setAiOutput(accumulatedText)
+              }
+            } catch (parseError) {
+              if (parseError.message && !parseError.message.includes('Unexpected token')) {
+                throw parseError
+              }
+            }
+          }
+        }
+      }
+
+      if (accumulatedText.trim()) {
+        try {
+          sessionStorage.setItem(currentCacheKey, accumulatedText)
+        } catch {}
+      } else if (!detectedQuota) {
+        throw new Error('Tidak ada teks analisis yang diterima dari model AI.')
       }
     } catch (err) {
       console.error('AI Generation Error:', err)
@@ -296,33 +308,37 @@ WAJIB: Berikan ulasan tajam, padat, to-the-point 100% dalam BAHASA INDONESIA dal
 
       {/* ==================== KONTEN ANALISIS AI ==================== */}
       <div className="relative z-10">
-        {/* Loading State dengan Estimasi Waktu Realistis */}
-        {isLoading && (
+        {/* Loading State: Tampilan Saat AI Sedang Menalar (Thinking) & Belum Mengalirkan Teks */}
+        {isLoading && !aiOutput && (
           <div className="space-y-3.5 py-6 animate-pulse">
             <div className="flex items-center gap-2.5 text-indigo-300 text-xs md:text-sm font-semibold">
               <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-ping"></span>
               <span>
-                Model Kimi K3.1 Pro sedang melakukan penalaran ilmiah untuk konteks ({isAtmosfer ? indicatorMeta.label : sectorMeta.short} • {monthName} {activeYear} • {chartView}). Mohon tunggu sebentar (~20–35 detik)...
+                Model Kimi K3.1 Pro sedang menelaah data spasial & dinamika atmosfer Surabaya ({isAtmosfer ? indicatorMeta.label : sectorMeta.short} • {monthName} {activeYear})...
               </span>
             </div>
-            <div className="h-3.5 bg-indigo-900/40 rounded-full w-5/6"></div>
-            <div className="h-3.5 bg-indigo-900/30 rounded-full w-full"></div>
-            <div className="h-3.5 bg-indigo-900/25 rounded-full w-4/6"></div>
-            <div className="h-3.5 bg-indigo-900/20 rounded-full w-3/4"></div>
+            <div className="h-3 bg-indigo-900/40 rounded-full w-5/6"></div>
+            <div className="h-3 bg-indigo-900/30 rounded-full w-full"></div>
+            <div className="h-3 bg-indigo-900/25 rounded-full w-4/6"></div>
+            <p className="text-[11px] text-slate-400 italic">
+              AI sedang menjalankan penalaran ilmiah mendalam. Teks ulasan Bahasa Indonesia akan mulai mengalir secara real-time sesaat lagi...
+            </p>
           </div>
         )}
 
-        {/* Tampilan Output Analisis Lengkap Hasil Generate AI */}
-        {!isLoading && aiOutput && (
+        {/* Tampilan Output Analisis (Mendukung Live Streaming Real-time Maupun Selesai) */}
+        {aiOutput && (
           <div className="bg-[#050B14]/85 p-6 rounded-2xl border border-indigo-500/40 shadow-inner space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-indigo-400 border-b border-indigo-900/40 pb-2.5 font-mono">
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-neon-emerald"></span>
-                <span>Analisis AI Komprehensif: <strong>{lastGeneratedContext}</strong></span>
+                <span className={`w-2 h-2 rounded-full ${isLoading ? 'bg-amber-400 animate-ping' : 'bg-emerald-400 shadow-neon-emerald'}`}></span>
+                <span>
+                  {isLoading ? 'Mengalirkan Analisis AI:' : 'Analisis AI Komprehensif:'} <strong>{lastGeneratedContext}</strong>
+                </span>
               </span>
               <div className="flex items-center gap-2 text-slate-400 text-[10px]">
                 <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 text-[10px] font-sans font-medium">
-                  🇮🇩 Bahasa Indonesia
+                  🇮🇩 100% Bahasa Indonesia
                 </span>
                 <span>Didukung Kimi K3.1 Pro • OpenAgentic API</span>
               </div>
@@ -330,6 +346,9 @@ WAJIB: Berikan ulasan tajam, padat, to-the-point 100% dalam BAHASA INDONESIA dal
             {/* Kotak responsif: tinggi otomatis menyesuaikan konten, dan jika panjang dapat di-scroll dengan elegan */}
             <div className="max-h-[560px] overflow-y-auto pr-2 custom-scrollbar space-y-2">
               {renderFormattedAiText(aiOutput)}
+              {isLoading && (
+                <span className="inline-block w-2 h-4 bg-indigo-400 animate-pulse ml-1 align-middle"></span>
+              )}
             </div>
           </div>
         )}
