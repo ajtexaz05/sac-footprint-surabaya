@@ -1,0 +1,9 @@
+sektor,vmin,vmax,satuan,metode,persentil
+AGRICULTURE,0,703.6790979003911,ton CO2/sel/bulan,percentile,99.0
+BUILDINGS,0,18360.241601562495,ton CO2/sel/bulan,percentile,99.0
+FUEL_EXPLOITATION,0,65153.247265624894,ton CO2/sel/bulan,percentile,99.0
+IND_COMBUSTION,0,198909.67874999996,ton CO2/sel/bulan,percentile,99.0
+IND_PROCESSES,0,168420.36484374973,ton CO2/sel/bulan,percentile,99.0
+POWER_INDUSTRY,0,933331.7012499997,ton CO2/sel/bulan,percentile,99.0
+TRANSPORT,0,42196.68992187501,ton CO2/sel/bulan,percentile,99.0
+WASTE,0,233.7613525390625,ton CO2/sel/bulan,percentile,99.0

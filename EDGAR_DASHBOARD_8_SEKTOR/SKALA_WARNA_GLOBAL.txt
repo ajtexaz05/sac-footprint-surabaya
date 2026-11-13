@@ -1,0 +1,6 @@
+Skala: percentile
+Persentil: 99.0
+Vmin: 0
+Vmax: 159779.625
+Satuan: ton CO2 per grid per bulan
+Interpolasi hanya untuk visualisasi.
