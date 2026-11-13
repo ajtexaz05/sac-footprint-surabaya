@@ -31,10 +31,10 @@ export default function AiInsightCard({
   const [lastGeneratedContext, setLastGeneratedContext] = useState(null)
   const [isCopied, setIsCopied] = useState(false)
 
-  // Cache key unik untuk setiap kombinasi tampilan dashboard (v3 dengan format 5 bagian lengkap)
+  // Cache key unik untuk setiap kombinasi tampilan dashboard (v4 laporan mendalam 5 bagian)
   const currentCacheKey = useMemo(() => {
     const itemKey = isAtmosfer ? activeIndicator : activeSector
-    return `sac_ai_v3_${activeSection}_${itemKey}_${activeYear}_${activeMonth}_${chartView}_${yearA}_${yearB}`
+    return `sac_ai_v4_${activeSection}_${itemKey}_${activeYear}_${activeMonth}_${chartView}_${yearA}_${yearB}`
   }, [activeSection, isAtmosfer, activeIndicator, activeSector, activeYear, activeMonth, chartView, yearA, yearB])
 
   // Sinkronisasi dengan cache sesi browser saat berpindah indikator/tahun
@@ -108,7 +108,7 @@ export default function AiInsightCard({
       komparasiDesc = `Perbandingan terpilih antara tahun ${yearA} dan ${yearB}.`
     }
 
-    // 6. Susun konteks komprehensif seluruh elemen layar beranda
+    // 6. Susun konteks komprehensif seluruh elemen layar beranda beserta instruksi laporan
     const promptContext = `DATA KONTEKS DASHBOARD BERANDA SAC-FOOTPRINT SURABAYA:
 - Sektor/Parameter Utama: ${isAtmosfer ? `${indicatorMeta.fullName} (${indicatorMeta.label})` : `${sectorMeta.label} (${sectorMeta.short})`}
 - Periode Aktif: Bulan ${monthName} Tahun ${activeYear} (Tampilan Grafik ${chartView})
@@ -117,7 +117,17 @@ export default function AiInsightCard({
 - Koridor Hotspot / Konsentrasi Tertinggi di Surabaya: ${hotspotDesc}
 - Peringkat Kontribusi Emisi Sektoral EDGAR v2026: ${rankingSektoralDesc}
 - Dinamika Grafik Temporal (${chartView}): ${trenGrafikDesc}
-- Komparasi Antar-Tahun Terpilih (${yearA} vs ${yearB}): ${komparasiDesc}`
+- Komparasi Antar-Tahun Terpilih (${yearA} vs ${yearB}): ${komparasiDesc}
+
+INSTRUKSI PENGGUNA:
+Berdasarkan seluruh data konteks di atas, buatkan laporan ulasan sintesis ilmiah AI yang sangat mendalam, kaya data numerik, ekstensif, dan lengkap dalam 5 bagian terstruktur:
+### 1. Peta Spasial & Koridor Hotspot Surabaya
+### 2. Peringkat Emisi Sektoral & Kontributor Antropogenik Utama
+### 3. Dinamika Tren Temporal & Komparasi Antar-Tahun
+### 4. Analisis Risiko Lingkungan & Kesehatan Warga
+### 5. Rekomendasi Kebijakan Mitigasi Terukur Pemkot Surabaya
+
+Uraikan secara panjang, detail, ilmiah, dan berbobot dari Bagian 1 sampai selesai Bagian 5 tuntas tanpa terpotong (100% Bahasa Indonesia).`
 
     try {
       const response = await fetch('/api/generate', {

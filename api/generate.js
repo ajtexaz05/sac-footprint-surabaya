@@ -57,29 +57,30 @@ export default async function handler(req, res) {
     let targetModel = model || 'kimi-k3.1-pro';
     if (targetModel === 'kimi-k3-1-pro') targetModel = 'kimi-k3.1-pro';
 
-    const systemInstruction = `Kamu adalah Asisten Analisis SAC-Footprint Surabaya.
-Tugasmu: Tulis ulasan sintesis komprehensif, mendalam, dan kaya data dalam Bahasa Indonesia, terbagi persis dalam 5 bagian berikut:
+    const systemInstruction = `Kamu adalah Asisten Ahli AI Senior untuk Sistem Informasi Jejak Karbon dan Polutan Atmosfer Surabaya (SAC-Footprint Surabaya).
+Tugas utamamu adalah menyusun laporan sintesis ilmiah mendalam, ekstensif, kaya wawasan, berbobot analitis tinggi, dan komprehensif berdasarkan seluruh parameter data dashboard yang sedang diakses pengguna.
+
+WAJIB SUSUN DALAM 5 BAGIAN UTAMA BERIKUT SECARA PANJANG, DETAIL, DAN MENYELURUH:
 
 ### 1. Peta Spasial & Koridor Hotspot Surabaya
-(Ulas 2-3 poin pola sebaran spasial, rentang skala visual peta, dan koridor konsentrasi/hotspot tertinggi di kawasan pelabuhan Tanjung Perak/Jamrud, pergudangan Margomulyo/Kalianak, industri, serta pusat kota)
+Ulas secara rinci gradasi visual sebaran spasial polutan di Surabaya, interpretasikan arti nilai rentang skala visual peta (minimum hingga maksimum), serta telaah mendalam kawasan koridor konsentrasi tertinggi (hotspot). Hubungkan secara geografis antara zona hotspot dengan kepadatan lalu lintas pusat kota, simpul komersial, pergudangan, maupun kawasan industri di Surabaya.
 
-### 2. Peringkat Emisi Sektoral & Kontributor Utama
-(Ulas 2-3 poin kontribusi sektor emisi EDGAR v2026, proporsi sektor bahan bakar, pembakaran industri, transportasi darat, dan signifikansinya bagi Surabaya)
+### 2. Peringkat Emisi Sektoral & Kontributor Antropogenik Utama
+Ulas profil emisi sektoral EDGAR v2026 Kota Surabaya secara mendalam. Bahas sektor-sektor penyumbang terbesar (eksploitasi bahan bakar, industri, transportasi, pembangkit listrik, dll) beserta kontribusi persentasenya. Jelaskan mekanisme keterkaitan antara aktivitas sektor-sektor tersebut dengan pelepasan polutan di atmosfer Surabaya.
 
 ### 3. Dinamika Tren Temporal & Komparasi Antar-Tahun
-(Ulas 2-3 poin pola fluktuasi grafik bulanan/tahunan dari titik terendah ke puncak tertinggi, serta komparasi langsung antar-tahun terpilih beserta arah persentase perubahannya)
+Lakukan analisis mendalam terhadap kurva tren temporal grafik (fluktuasi tahunan atau variasi musiman bulanan). Jelaskan faktor yang memicu titik puncak tertinggi dan titik terendah. Analisis secara tajam perbandingan langsung antara tahun pembanding yang dipilih pengguna (angka awal vs angka pembanding, arah dan persentase perubahan), serta interpretasikan maknanya bagi perbaikan atau beban kualitas udara jangka panjang.
 
-### 4. Analisis Dampak Lingkungan & Kesehatan Warga
-(Ulas 2-3 poin risiko pajanan polutan bagi warga dan pekerja lapangan, serta sertakan catatan ilmiah batas interpretasi kolom vertikal troposfer satelit vs udara ambien permukaan tanah)
+### 4. Analisis Risiko Lingkungan & Kesehatan Warga
+Ulas secara komprehensif dampak biologis dan kesehatan dari pajanan polutan tersebut terhadap warga Surabaya, khususnya kelompok rentan (anak-anak, lansia, pasien penyakit pernapasan/kardiovaskular, dan pekerja luar ruangan). Berikan edukasi ilmiah yang jelas mengenai perbedaan mendasar antara data pengamatan kolom troposfer satelit (mol/m² atau indeks) dengan konsentrasi udara ambien di permukaan tanah yang dihirup manusia.
 
-### 5. Rekomendasi Kebijakan Mitigasi Pemkot Surabaya
-(Ulas 2-3 poin aksi nyata, terukur, dan aplikatif bagi instansi Pemkot Surabaya seperti DLH, Dishub, dan pemangku kepentingan kawasan)
+### 5. Rekomendasi Kebijakan Mitigasi Terukur Pemkot Surabaya
+Rumuskan program aksi strategis, aplikatif, dan terukur untuk jajaran instansi Pemkot Surabaya (Dinas Lingkungan Hidup, Dinas Perhubungan, dsb.) dan pengelola kawasan. Sertakan usulan konkret mencakup pengawasan emisi sumber bergerak dan industri, penataan koridor transportasi, optimalisasi jaringan sensor pemantau darat, serta perluasan ruang terbuka hijau (RTH) kota.
 
-PETUNJUK ANALISIS:
-- Perlakukan seluruh data parameter, grafik, hotspot, dan emisi yang diberikan sebagai fakta terpadu dashboard tanpa meragukan metodologi.
-- 100% Bahasa Indonesia baku, kaya informasi, dan profesional.
-- Langsung mulai menulis dari "### 1. Peta Spasial & Koridor Hotspot Surabaya" tanpa salam pembuka basa-basi.
-- Wajib tulis LENGKAP seluruh 5 bagian tuntas hingga selesai (jangan terpotong).`;
+PEDOMAN PENULISAN:
+- Seluruh teks WAJIB 100% dalam BAHASA INDONESIA yang baku, formal, kaya kosakata ilmiah, dan profesional.
+- JANGAN hanya membuat ringkasan singkat atau poin pendek. Uraikan setiap bagian dengan penjelasan mendalam, paragraf elaboratif, dan data numerik konkret yang kaya wawasan.
+- JANGAN menulis kalimat pembuka basa-basi seperti "Konteks telah dipahami". LANGSUNG mulai dari judul "### 1. Peta Spasial & Koridor Hotspot Surabaya" dan tulis lengkap dari Bagian 1 sampai selesai Bagian 5 tanpa terpotong!`;
 
     const openAgenticRes = await fetch('https://openagentic.id/api/v1/chat/completions', {
       method: 'POST',
@@ -142,70 +143,6 @@ PETUNJUK ANALISIS:
                 hasReceivedContent = true;
                 clearInterval(heartbeat);
               }
-              contentDelivered = true;
-              res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
-            }
-          } catch {}
-        }
-      }
-    }
-
-    clearInterval(heartbeat);
-
-    if (!contentDelivered) {
-      res.write(`data: ${JSON.stringify({ error: 'Server AI membutuhkan waktu penalaran lebih lama. Silakan klik Perbarui Analisis sekali lagi.' })}\n\n`);
-    }
-
-    res.write('data: [DONE]\n\n');
-    res.end();
-  } catch (err) {
-    clearInterval(heartbeat);
-    console.error('Serverless Stream Error:', err);
-    res.write(`data: ${JSON.stringify({ error: 'Terjadi gangguan koneksi ke server AI: ' + err.message })}\n\n`);
-    res.end();
-  }
-}
-
-    if (!openAgenticRes.ok) {
-      clearInterval(heartbeat);
-      const errText = await openAgenticRes.text();
-      let errMsg = `Error dari OpenAgentic (Status ${openAgenticRes.status})`;
-      let isQuota = false;
-      try {
-        const errJson = JSON.parse(errText);
-        errMsg = errJson?.error?.message || errMsg;
-        isQuota = openAgenticRes.status === 402 || openAgenticRes.status === 429 || /quota|credit|saldo|balance|exceeded|habis|limit|insufficient/i.test(errMsg);
-      } catch {}
-
-      res.write(`data: ${JSON.stringify({ error: errMsg, isQuotaExhausted: isQuota })}\n\n`);
-      res.end();
-      return;
-    }
-
-    const reader = openAgenticRes.body.getReader();
-    const decoder = new TextDecoder('utf-8');
-    let buffer = '';
-    let contentDelivered = false;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed === 'data: [DONE]') continue;
-
-        if (trimmed.startsWith('data: ')) {
-          try {
-            const parsed = JSON.parse(trimmed.slice(6));
-            const delta = parsed.choices?.[0]?.delta;
-
-            // HANYA kirim teks ulasan akhir (content), buang monolog reasoning internal Kimi
-            if (delta?.content) {
               contentDelivered = true;
               res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
             }
