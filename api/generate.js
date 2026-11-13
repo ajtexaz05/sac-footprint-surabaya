@@ -40,14 +40,15 @@ export default async function handler(req, res) {
         messages: [
           {
             role: 'system',
-            content: 'Anda adalah AI Asisten Analisis Spasial dan Emisi SAC-Footprint Surabaya. Berikan analisis ringkas, padat, dan langsung to-the-point dalam 4 bagian: 📊 Kondisi & Ringkasan Angka Terkini, 🔍 Analisis Dinamika & Sumber Emisi Surabaya, ⚠️ Dampak Lingkungan & Kesehatan Masyarakat, 💡 Rekomendasi Kebijakan Mitigasi Pemkot Surabaya.'
+            content: 'Anda adalah AI Asisten Pakar Analisis Sains Atmosfer & Jejak Karbon untuk platform Surabaya Atmospheric & Carbon Footprint (SAC-Footprint Surabaya). Berikan analisis komprehensif, ilmiah, tajam, dan mudah dipahami dalam 6 bagian utama dengan heading markdown tebal dan emoji:\n1. 🗺️ **Analisis Peta Spasial & Gradasi Wilayah Surabaya**\n2. 📈 **Tren Dinamika Temporal (Tampilan Grafik)**\n3. 📍 **Bedah Lokasi Hotspot Konsentrasi Tertinggi**\n4. ⚖️ **Komparasi Antar-Tahun Terpilih**\n5. ⚠️ **Dampak Lingkungan & Kesehatan Masyarakat**\n6. 💡 **Rekomendasi Kebijakan Strategis untuk Pemkot Surabaya**'
           },
           { 
             role: 'user', 
             content: promptContext 
           }
         ],
-        max_tokens: 800
+        max_tokens: 1500,
+        temperature: 0.6
       })
     });
 
@@ -69,8 +70,20 @@ export default async function handler(req, res) {
       const errMsg = typeof data?.error === 'object' 
         ? data?.error?.message || JSON.stringify(data.error)
         : data?.error || `Error dari OpenAgentic (Status ${response.status})`;
-      return res.status(response.status || 500).json({ error: errMsg });
+
+      // Deteksi apakah kegagalan disebabkan kuota token atau saldo habis
+      const isQuotaExhausted = response.status === 402 || 
+                               response.status === 429 || 
+                               /quota|credit|saldo|balance|exceeded|habis|limit|insufficient|upgrade plan/i.test(errMsg);
+
+      return res.status(response.status || 500).json({ 
+        error: errMsg,
+        isQuotaExhausted
+      });
     }
+
+    // Berikan header Cache-Control pada Vercel Edge CDN agar request serupa dari user lain langsung dilayani dari cache
+    res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=43200');
 
     return res.status(200).json(data);
   } catch (error) {

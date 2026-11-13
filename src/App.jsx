@@ -1508,6 +1508,14 @@ function App() {
           fmtTon={fmtTon}
           fmtNum={fmtNum}
           isAtmosfer={isAtmosfer}
+          chartView={chartView}
+          chartData={chartData}
+          yearA={yearA}
+          yearB={yearB}
+          comparisonData={isAtmosfer ? atmosComparison : edgarComparison}
+          activeScale={activeScale}
+          edgarPieData={edgarPieData}
+          edgarTotalCO2={edgarTotalCO2}
         />
 
         {/* ==================== METADATA & BATASAN ==================== */}
