@@ -54,8 +54,12 @@ export default defineConfig(({ mode }) => {
                 let targetModel = model || 'kimi-k3.1-pro'
                 if (targetModel === 'kimi-k3-1-pro') targetModel = 'kimi-k3.1-pro'
 
+                const controller = new AbortController()
+                const timeoutId = setTimeout(() => controller.abort(), 54000)
+
                 const openAgenticRes = await fetch('https://openagentic.id/api/v1/chat/completions', {
                   method: 'POST',
+                  signal: controller.signal,
                   headers: {
                     'Authorization': `Bearer ${apiKey}`,
                     'Content-Type': 'application/json'
@@ -65,14 +69,15 @@ export default defineConfig(({ mode }) => {
                     messages: [
                       {
                         role: 'system',
-                        content: 'Anda adalah AI Asisten Pakar Analisis Sains Atmosfer & Jejak Karbon untuk platform Surabaya Atmospheric & Carbon Footprint (SAC-Footprint Surabaya). Berikan analisis komprehensif, ilmiah, tajam, dan mudah dipahami dalam 6 bagian utama dengan heading markdown tebal dan emoji:\n1. 🗺️ **Analisis Peta Spasial & Gradasi Wilayah Surabaya**\n2. 📈 **Tren Dinamika Temporal (Tampilan Grafik)**\n3. 📍 **Bedah Lokasi Hotspot Konsentrasi Tertinggi**\n4. ⚖️ **Komparasi Antar-Tahun Terpilih**\n5. ⚠️ **Dampak Lingkungan & Kesehatan Masyarakat**\n6. 💡 **Rekomendasi Kebijakan Strategis untuk Pemkot Surabaya**'
+                        content: 'Anda adalah AI Asisten Pakar Analisis Sains Atmosfer & Jejak Karbon untuk platform Surabaya Atmospheric & Carbon Footprint (SAC-Footprint Surabaya). Berikan ulasan tajam, padat, to-the-point dalam 4 bagian berurutan:\n1. 🗺️ **Peta Spasial & Hotspot Surabaya** (analisis sebaran konsentrasi, gradasi warna, dan koridor emisi tertinggi)\n2. 📈 **Tren Temporal & Komparasi Antar-Tahun** (analisis dinamika grafik, fluktuasi musiman, dan perbandingan antar-tahun)\n3. ⚠️ **Dampak Lingkungan & Kesehatan Warga** (risiko pajanan masyarakat & batasan kolom satelit vs udara ambien)\n4. 💡 **Rekomendasi Kebijakan Mitigasi Pemkot** (langkah konkret terarah untuk dinas terkait Pemkot Surabaya)\nLangsung berikan ulasan to-the-point tanpa kalimat pembuka basa-basi atau penalaran bertele-tele (maksimal 250-300 kata total).'
                       },
                       { role: 'user', content: promptContext }
                     ],
-                    max_tokens: 1500,
-                    temperature: 0.6
+                    max_tokens: 800
                   })
                 })
+
+                clearTimeout(timeoutId)
 
                 const rawText = await openAgenticRes.text()
                 let data
@@ -99,6 +104,17 @@ export default defineConfig(({ mode }) => {
                   res.statusCode = openAgenticRes.status || 500
                   res.end(JSON.stringify({ error: errMsg, isQuotaExhausted }))
                   return
+                }
+
+                // Normalisasi isi konten dari content atau reasoning_content
+                const choice = data?.choices?.[0]
+                const finalContent = (choice?.message?.content && choice.message.content.trim()) 
+                  || (choice?.message?.reasoning_content && choice.message.reasoning_content.trim())
+                  || (typeof choice?.text === 'string' && choice.text.trim()) 
+                  || ''
+
+                if (data?.choices?.[0]?.message) {
+                  data.choices[0].message.content = finalContent
                 }
 
                 res.statusCode = 200

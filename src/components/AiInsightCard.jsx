@@ -94,23 +94,21 @@ export default function AiInsightCard({
       : 'Belum ada data komparasi tahun pembanding'
 
     // 5. Susun prompt konteks lengkap
-    const promptContext = `Halo AI Kimi, pengguna saat ini sedang membuka dashboard SAC-Footprint Surabaya dengan konfigurasi data lengkap berikut:
+    const promptContext = `Pengguna saat ini sedang membuka dashboard SAC-Footprint Surabaya dengan konfigurasi data berikut:
 - Kategori Analisis: ${isAtmosfer ? 'Polutan & Parameter Atmosfer Satelit (Sentinel-5P / MODIS)' : 'Inventarisasi Emisi Sektoral Gas Rumah Kaca (IEA-EDGAR CO₂)'}
 - Parameter/Sektor Aktif: ${isAtmosfer ? `${indicatorMeta.fullName} (${indicatorMeta.label})` : `${sectorMeta.label} (${sectorMeta.short})`}
 - Periode Waktu Terpilih: Bulan ${monthName} Tahun ${activeYear}
 - Nilai Statistik Terkini: ${isAtmosfer ? `Rata-rata ${activeYear}: ${fmtNum(kpiData.latest)} ${indicatorMeta.displayUnit} (YoY: ${kpiData.change != null ? (kpiData.change > 0 ? '+' : '') + kpiData.change.toFixed(1) + '%' : '–'})` : `Total 8 Sektor ${activeYear}: ${fmtTon(kpiData.total)} ton CO₂. Sektor terbesar: ${kpiData.topSector?.name || '–'} (${fmtTon(kpiData.topSector?.value)} ton)`}
 - Informasi Peta Spasial: ${skalaPetaDesc}
-- Grafik Tren Temporal yang Dilihat: ${trenGrafikDesc}
+- Grafik Tren Temporal (${chartView}): ${trenGrafikDesc}
 - Peringkat Hotspot / Kontributor Tertinggi: ${hotspotDesc}
-- Komparasi Antar-Tahun: ${komparasiDesc}
+- Komparasi Antar-Tahun (${yearA} vs ${yearB}): ${komparasiDesc}
 
-Tolong berikan penjelasan ilmiah yang sangat lengkap, detail, dan mudah dipahami dalam 6 bagian utama berurutan:
-1. 🗺️ **Analisis Peta Spasial & Gradasi Wilayah Surabaya**: Ulas peta yang sedang dilihat, distribusi geografis warna pekat/merah di Surabaya, dan arti skala colorbar.
-2. 📈 **Tren Dinamika Temporal (${chartView})**: Jelaskan pergerakan grafik (${chartView}), puncak emisi/polutan, dan faktor pemicunya (cuaca/muson atau pola mobilitas warga).
-3. 📍 **Bedah Lokasi Hotspot Konsentrasi Tertinggi**: Ulas mengapa wilayah/sektor hotspot di atas menjadi pusat konsentrasi tertinggi di Kota Surabaya.
-4. ⚖️ **Komparasi Antar-Tahun (${yearA} vs ${yearB})**: Evaluasi signifikansi kenaikan/penurunan persentase antara kedua tahun tersebut.
-5. ⚠️ **Dampak Lingkungan & Kesehatan Masyarakat**: Fakta ilmiah risiko kesehatan bagi warga Surabaya berdasarkan standar WHO/BMKG.
-6. 💡 **Rekomendasi Kebijakan Terarah untuk Pemkot Surabaya**: Langkah aksi mitigasi konkret (kebijakan transportasi, tata ruang industri, atau ruang terbuka hijau).`
+Berikan ulasan tajam, padat, to-the-point dalam 4 bagian:
+1. 🗺️ **Peta Spasial & Hotspot Surabaya** (gradasi sebaran spasial & kawasan konsentrasi emisi tertinggi)
+2. 📈 **Tren Temporal & Komparasi Antar-Tahun** (analisis fluktuasi grafik ${chartView} & signifikansi perbandingan ${yearA} vs ${yearB})
+3. ⚠️ **Dampak Lingkungan & Kesehatan Warga** (risiko pajanan masyarakat & catatan kolom vertikal satelit)
+4. 💡 **Rekomendasi Kebijakan Mitigasi Pemkot** (solusi mitigasi terarah bagi Pemkot Surabaya)`
 
     try {
       const response = await fetch('/api/generate', {
@@ -145,7 +143,12 @@ Tolong berikan penjelasan ilmiah yang sangat lengkap, detail, dan mudah dipahami
         throw new Error(msg)
       }
 
-      const text = data?.choices?.[0]?.message?.content || 'Tidak ada teks respon yang diterima dari model AI.'
+      const choice = data?.choices?.[0]
+      const text = (choice?.message?.content && choice.message.content.trim())
+        || (choice?.message?.reasoning_content && choice.message.reasoning_content.trim())
+        || (typeof choice?.text === 'string' && choice.text.trim())
+        || 'Tidak ada teks respon yang diterima dari model AI.'
+
       setAiOutput(text)
       setLastGeneratedContext(`${isAtmosfer ? indicatorMeta.label : sectorMeta.short} • ${monthName} ${activeYear}`)
 
@@ -325,7 +328,7 @@ Tolong berikan penjelasan ilmiah yang sangat lengkap, detail, dan mudah dipahami
                 Ingin Memahami Makna Angka & Pola Spasial Ini Secara Mendalam?
               </h4>
               <p className="text-xs md:text-sm text-indigo-200/80 leading-relaxed">
-                Klik tombol <strong className="text-blue-300">"Generate Analisis AI"</strong> di atas. Model AI Kimi K3.1 Pro akan membaca posisi layar Anda secara real-time dan menghasilkan ulasan komprehensif 6 bagian:
+                Klik tombol <strong className="text-blue-300">"Generate Analisis AI"</strong> di atas. Model AI Kimi K3.1 Pro akan membaca posisi layar Anda secara real-time dan menghasilkan sintesis komprehensif 4 bagian:
               </p>
             </div>
 
@@ -333,23 +336,23 @@ Tolong berikan penjelasan ilmiah yang sangat lengkap, detail, dan mudah dipahami
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 text-left">
               <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-900/40 flex flex-col gap-1">
                 <span className="text-base">🗺️</span>
-                <span className="text-xs font-bold text-white">Distribusi Spasial</span>
-                <span className="text-[11px] text-slate-400 leading-snug">Gradasi wilayah pekat di Surabaya & arti colorbar.</span>
+                <span className="text-xs font-bold text-white">Peta & Hotspot Spasial</span>
+                <span className="text-[11px] text-slate-400 leading-snug">Gradasi wilayah pekat di Surabaya, arti skala, & koridor emisi.</span>
               </div>
               <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-900/40 flex flex-col gap-1">
                 <span className="text-base">📈</span>
-                <span className="text-xs font-bold text-white">Tren Temporal ({chartView})</span>
-                <span className="text-[11px] text-slate-400 leading-snug">Fluktuasi grafik temporal & siklus meteorologi/musiman.</span>
+                <span className="text-xs font-bold text-white">Tren & Komparasi Tahun</span>
+                <span className="text-[11px] text-slate-400 leading-snug">Fluktuasi grafik {chartView} & perbandingan {yearA} vs {yearB}.</span>
               </div>
               <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-900/40 flex flex-col gap-1">
-                <span className="text-base">📍</span>
-                <span className="text-xs font-bold text-white">Analisis Hotspot</span>
-                <span className="text-[11px] text-slate-400 leading-snug">Kecamatan/koridor konsentrasi tertinggi di Surabaya.</span>
+                <span className="text-base">⚠️</span>
+                <span className="text-xs font-bold text-white">Dampak Lingkungan</span>
+                <span className="text-[11px] text-slate-400 leading-snug">Risiko pajanan warga & batasan kolom vertikal satelit.</span>
               </div>
               <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-900/40 flex flex-col gap-1">
-                <span className="text-base">⚖️</span>
-                <span className="text-xs font-bold text-white">Komparasi ({yearA} vs {yearB})</span>
-                <span className="text-[11px] text-slate-400 leading-snug">Evaluasi perbandingan antar-tahun & rekomendasi mitigasi.</span>
+                <span className="text-base">💡</span>
+                <span className="text-xs font-bold text-white">Rekomendasi Kebijakan</span>
+                <span className="text-[11px] text-slate-400 leading-snug">Aksi mitigasi konkret & terukur untuk Pemkot Surabaya.</span>
               </div>
             </div>
 
