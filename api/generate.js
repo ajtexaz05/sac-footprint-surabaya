@@ -48,11 +48,11 @@ export default async function handler(req, res) {
         messages: [
           {
             role: 'system',
-            content: 'Kamu adalah Asisten Ahli AI SAC-Footprint Surabaya. Berikan analisis ilmiah mendalam, komprehensif, dan solutif dalam 4 bagian utama terstruktur:\n1. 🗺️ **Analisis Peta Spasial & Hotspot Surabaya** (sebaran konsentrasi, gradasi warna peta, dan koridor emisi utama)\n2. 📈 **Tren Dinamika Temporal & Komparasi Antar-Tahun** (fluktuasi grafik bulanan/tahunan, pengaruh musim/meteorologi, dan perbandingan tahun terpilih)\n3. ⚠️ **Dampak Lingkungan & Kesehatan Masyarakat** (risiko pajanan warga, standar kesehatan, dan catatan kolom satelit vertikal vs udara ambien)\n4. 💡 **Rekomendasi Kebijakan Mitigasi Pemkot Surabaya** (solusi konkret tata ruang, regulasi transportasi/industri, dan aksi mitigasi dinas terkait)\n\nKETENTUAN MUTLAK:\n- Seluruh jawaban akhir WAJIB 100% dalam BAHASA INDONESIA yang baku dan profesional.\n- Sajikan ulasan yang kaya informasi dan berbobot tanpa kalimat pembuka basa-basi.'
+            content: 'Kamu adalah Asisten AI SAC-Footprint Surabaya. Tuliskan ulasan dalam 4 bagian:\n1. 🗺️ **Peta Spasial & Hotspot Surabaya** (analisis sebaran konsentrasi, gradasi warna, dan koridor emisi)\n2. 📈 **Tren Temporal & Komparasi Antar-Tahun** (analisis grafik musiman dan perbandingan tahun)\n3. ⚠️ **Dampak Lingkungan & Kesehatan Warga** (risiko pajanan warga & batasan kolom satelit vs udara ambien)\n4. 💡 **Rekomendasi Kebijakan Mitigasi Pemkot** (langkah konkret terarah untuk Pemkot Surabaya)\n\nPENTING:\n- Penalaran internal (thinking) sangat singkat (1-2 kalimat saja).\n- Tulis ulasan padat tuntas sampai selesai (maksimal 250-300 kata, dilarang terpotong di tengah jalan).\n- Seluruh teks ulasan akhir WAJIB 100% dalam BAHASA INDONESIA.'
           },
           { role: 'user', content: promptContext }
         ],
-        max_tokens: 2000
+        max_tokens: 2500
       })
     });
 
@@ -75,6 +75,7 @@ export default async function handler(req, res) {
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
     let lastKeepAlive = Date.now();
+    let contentDelivered = false;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -96,7 +97,7 @@ export default async function handler(req, res) {
             // Jika Kimi sedang dalam tahap penalaran internal (reasoning), kirim keep-alive status agar koneksi tetap segar
             if (delta?.reasoning_content) {
               const now = Date.now();
-              if (now - lastKeepAlive > 3000) {
+              if (now - lastKeepAlive > 2500) {
                 lastKeepAlive = now;
                 res.write(`data: ${JSON.stringify({ status: 'thinking' })}\n\n`);
               }
@@ -104,11 +105,16 @@ export default async function handler(req, res) {
 
             // HANYA kirim teks jawaban akhir (content), abaikan dan buang monolog reasoning internal Kimi
             if (delta?.content) {
+              contentDelivered = true;
               res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
             }
           } catch {}
         }
       }
+    }
+
+    if (!contentDelivered) {
+      res.write(`data: ${JSON.stringify({ error: 'Server AI membutuhkan waktu penalaran lebih lama. Silakan klik Perbarui Analisis sekali lagi.' })}\n\n`);
     }
 
     res.write('data: [DONE]\n\n');

@@ -93,22 +93,15 @@ export default function AiInsightCard({
       ? `Perbandingan Tahun ${yearA} (${isAtmosfer ? fmtNum(comparisonData.valA) : fmtTon(comparisonData.valA)}) terhadap Tahun ${yearB} (${isAtmosfer ? fmtNum(comparisonData.valB) : fmtTon(comparisonData.valB)}), tercatat perubahan sebesar ${comparisonData.change != null ? (comparisonData.change > 0 ? '+' : '') + comparisonData.change.toFixed(1) + '%' : '–'}.`
       : 'Belum ada data komparasi tahun pembanding'
 
-    // 5. Susun prompt konteks lengkap
-    const promptContext = `Pengguna saat ini sedang membuka dashboard SAC-Footprint Surabaya dengan konfigurasi data berikut:
-- Kategori Analisis: ${isAtmosfer ? 'Polutan & Parameter Atmosfer Satelit (Sentinel-5P / MODIS)' : 'Inventarisasi Emisi Sektoral Gas Rumah Kaca (IEA-EDGAR CO₂)'}
-- Parameter/Sektor Aktif: ${isAtmosfer ? `${indicatorMeta.fullName} (${indicatorMeta.label})` : `${sectorMeta.label} (${sectorMeta.short})`}
-- Periode Waktu Terpilih: Bulan ${monthName} Tahun ${activeYear}
-- Nilai Statistik Terkini: ${isAtmosfer ? `Rata-rata ${activeYear}: ${fmtNum(kpiData.latest)} ${indicatorMeta.displayUnit} (YoY: ${kpiData.change != null ? (kpiData.change > 0 ? '+' : '') + kpiData.change.toFixed(1) + '%' : '–'})` : `Total 8 Sektor ${activeYear}: ${fmtTon(kpiData.total)} ton CO₂. Sektor terbesar: ${kpiData.topSector?.name || '–'} (${fmtTon(kpiData.topSector?.value)} ton)`}
-- Informasi Peta Spasial: ${skalaPetaDesc}
-- Grafik Tren Temporal (${chartView}): ${trenGrafikDesc}
-- Peringkat Hotspot / Kontributor Tertinggi: ${hotspotDesc}
-- Komparasi Antar-Tahun (${yearA} vs ${yearB}): ${komparasiDesc}
-
-WAJIB: Berikan ulasan tajam, padat, to-the-point 100% dalam BAHASA INDONESIA dalam 4 bagian berurutan:
-1. 🗺️ **Peta Spasial & Hotspot Surabaya** (analisis sebaran spasial, gradasi warna, dan koridor konsentrasi tertinggi)
-2. 📈 **Tren Temporal & Komparasi Antar-Tahun** (analisis fluktuasi grafik ${chartView} dan perbandingan ${yearA} vs ${yearB})
-3. ⚠️ **Dampak Lingkungan & Kesehatan Warga** (risiko pajanan masyarakat & catatan batasan kolom satelit vs udara ambien)
-4. 💡 **Rekomendasi Kebijakan Mitigasi Pemkot** (langkah konkret terarah untuk Pemkot Surabaya)`
+    // 5. Susun prompt konteks padat & terstruktur
+    const promptContext = `Data Dashboard SAC-Footprint Surabaya:
+- Parameter/Sektor: ${isAtmosfer ? `${indicatorMeta.fullName} (${indicatorMeta.label})` : `${sectorMeta.label} (${sectorMeta.short})`}
+- Periode Terpilih: Bulan ${monthName} ${activeYear} (${chartView})
+- Nilai Terkini: ${isAtmosfer ? `Rata-rata: ${fmtNum(kpiData.latest)} ${indicatorMeta.displayUnit} (YoY: ${kpiData.change != null ? (kpiData.change > 0 ? '+' : '') + kpiData.change.toFixed(1) + '%' : '–'})` : `Total: ${fmtTon(kpiData.total)} ton CO₂. Terbesar: ${kpiData.topSector?.name || '–'} (${fmtTon(kpiData.topSector?.value)} ton)`}
+- Peta Spasial: ${skalaPetaDesc}
+- Tren Grafik (${chartView}): ${trenGrafikDesc}
+- Hotspot Tertinggi: ${hotspotDesc}
+- Komparasi Tahun: ${komparasiDesc}`
 
     try {
       const response = await fetch('/api/generate', {
@@ -178,7 +171,7 @@ WAJIB: Berikan ulasan tajam, padat, to-the-point 100% dalam BAHASA INDONESIA dal
           sessionStorage.setItem(currentCacheKey, accumulatedText)
         } catch {}
       } else if (!detectedQuota) {
-        throw new Error('Tidak ada teks analisis yang diterima dari model AI.')
+        throw new Error('Server AI membutuhkan waktu penalaran sedikit lebih lama untuk parameter ini. Silakan klik tombol "Perbarui Analisis" untuk memuat ulasan.')
       }
     } catch (err) {
       console.error('AI Generation Error:', err)
