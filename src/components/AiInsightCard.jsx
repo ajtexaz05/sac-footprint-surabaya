@@ -290,7 +290,7 @@ export default function AiInsightCard({
                 <path d="M17 19h4"/>
               </svg>
             </span>
-            <span>Analisis Sintesis Cerdas AI (Kimi K3.1 Pro)</span>
+            <span>Analisis Sintesis Cerdas Si JAKA</span>
           </h3>
           <p className="text-xs text-indigo-300/80 mt-1">
             Penjelasan komprehensif peta spasial, peringkat emisi sektoral, tren grafik temporal, dan komparasi antar-tahun
@@ -348,7 +348,7 @@ export default function AiInsightCard({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             )}
-            <span>{isLoading ? 'Memproses Penalaran AI...' : aiOutput ? 'Perbarui Analisis' : 'Generate Analisis AI'}</span>
+            <span>{isLoading ? 'Memproses Telaah Si JAKA...' : aiOutput ? 'Perbarui Analisis' : 'Generate Analisis Si JAKA'}</span>
           </button>
         </div>
       </div>
@@ -360,12 +360,12 @@ export default function AiInsightCard({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <div className="space-y-1">
-            <h5 className="font-bold text-amber-300 text-sm">Pemberitahuan: Kuota Token AI / Saldo Wallet Mencapai Batas</h5>
+            <h5 className="font-bold text-amber-300 text-sm">Pemberitahuan: Kuota Layanan Analisis Mencapai Batas</h5>
             <p className="text-xs text-amber-200/90 leading-relaxed">
-              Layanan AI sementara tidak dapat memproses permintaan baru karena kuota token atau saldo wallet OpenAgentic Anda telah habis.
+              Layanan ulasan sementara tidak dapat memproses permintaan baru karena kuota akses telah mencapai batas penggunaan.
             </p>
             <div className="pt-1.5 flex flex-wrap gap-3 text-[11px] font-mono text-amber-400">
-              <span>Solusi: Buka dashboard OpenAgentic & lakukan Top Up saldo atau perpanjang kuota paket Kimi K3.1 Pro.</span>
+              <span>Solusi: Hubungi administrator sistem untuk perpanjangan kuota layanan kecerdasan buatan Si JAKA.</span>
             </div>
           </div>
         </div>
@@ -388,18 +388,30 @@ export default function AiInsightCard({
       <div className="relative z-10">
         {/* Loading State: Tampilan Saat AI Sedang Menalar & Mengalirkan Teks */}
         {isLoading && !aiOutput && (
-          <div className="space-y-3.5 py-6 animate-pulse">
+          <div className="space-y-4 py-6 animate-pulse">
             <div className="flex items-center gap-2.5 text-indigo-300 text-xs md:text-sm font-semibold">
               <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
               <span>
-                Model Kimi K3.1 Pro sedang menelaah 5 dimensi data spasial, sektoral, & temporal Surabaya ({isAtmosfer ? indicatorMeta?.label : sectorMeta?.short} • {monthName} {activeYear})...
+                Asisten Cerdas Si JAKA sedang menelaah 5 dimensi data spasial, sektoral, & temporal Surabaya ({isAtmosfer ? indicatorMeta?.label : sectorMeta?.short} • {monthName} {activeYear})...
               </span>
             </div>
+
+            {/* Himbauan Jangan Refresh atau Pindah Halaman */}
+            <div className="flex items-center gap-2.5 p-3 bg-blue-950/60 border border-cyan-500/40 rounded-xl text-xs text-cyan-200">
+              <svg className="w-4 h-4 text-cyan-400 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+              </svg>
+              <span>
+                <strong>Himbauan Penting:</strong> Mohon tidak me-refresh browser atau berpindah halaman selama proses pembuatan ulasan berlangsung agar aliran data tidak terputus.
+              </span>
+            </div>
+
             <div className="h-3 bg-indigo-900/40 rounded-full w-5/6"></div>
             <div className="h-3 bg-indigo-900/30 rounded-full w-full"></div>
             <div className="h-3 bg-indigo-900/25 rounded-full w-4/6"></div>
             <p className="text-[11px] text-slate-400 italic">
-              AI sedang menjalankan penalaran ilmiah mendalam. Teks ulasan Bahasa Indonesia akan mulai mengalir secara real-time sesaat lagi...
+              Si JAKA sedang menjalankan telaah ilmiah mendalam. Teks ulasan Bahasa Indonesia akan mulai mengalir secara real-time sesaat lagi...
             </p>
           </div>
         )}
@@ -411,16 +423,30 @@ export default function AiInsightCard({
               <span className="flex items-center gap-1.5">
                 <span className={`w-2 h-2 rounded-full ${isLoading ? 'bg-amber-400 animate-ping' : 'bg-emerald-400 shadow-neon-emerald'}`}></span>
                 <span>
-                  {isLoading ? 'Mengalirkan Analisis AI:' : 'Analisis AI Komprehensif:'} <strong>{lastGeneratedContext}</strong>
+                  {isLoading ? 'Mengalirkan Analisis Si JAKA:' : 'Analisis Cerdas Si JAKA:'} <strong>{lastGeneratedContext}</strong>
                 </span>
               </span>
               <div className="flex items-center gap-2 text-slate-400 text-[10px]">
                 <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 text-[10px] font-sans font-medium">
                   ID 100% Bahasa Indonesia
                 </span>
-                <span>Didukung Kimi K3.1 Pro • OpenAgentic API</span>
+                <span>Sistem Sintesis Cerdas Si JAKA</span>
               </div>
             </div>
+
+            {/* Himbauan selama proses streaming aktif */}
+            {isLoading && (
+              <div className="flex items-center gap-2.5 p-2.5 bg-blue-950/60 border border-cyan-500/30 rounded-xl text-xs text-cyan-200">
+                <svg className="w-4 h-4 text-cyan-400 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+                <span>
+                  <strong>Sedang Mengalirkan Data:</strong> Mohon tetap berada di halaman ini hingga ulasan selesai sepenuhnya.
+                </span>
+              </div>
+            )}
+
             {/* Kotak responsif: tinggi otomatis menyesuaikan konten, dan jika panjang dapat di-scroll dengan elegan */}
             <div
               ref={scrollContainerRef}
@@ -431,6 +457,18 @@ export default function AiInsightCard({
                 <span className="inline-block w-2 h-4 bg-cyan-400 animate-pulse ml-1 align-middle"></span>
               )}
             </div>
+
+            {/* Footer Edukasi Pengguna */}
+            {!isLoading && (
+              <div className="pt-3 border-t border-indigo-900/40 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                <div className="flex items-center gap-2 text-indigo-300">
+                  <span className="text-cyan-400 font-bold">💡 Info:</span>
+                  <span>
+                    Jika hasil ulasan dirasa kurang maksimal atau kurang lengkap, silakan klik tombol <strong>"Perbarui Analisis"</strong> di kanan atas untuk memuat ulasan baru.
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -442,7 +480,7 @@ export default function AiInsightCard({
                 Ingin Memahami Makna Angka & Pola Spasial Ini Secara Mendalam?
               </h4>
               <p className="text-xs md:text-sm text-indigo-200/80 leading-relaxed">
-                Klik tombol <strong className="text-cyan-300">"Generate Analisis AI"</strong> di kanan atas. Model AI Kimi K3.1 Pro akan membaca posisi layar Anda secara real-time dan menghasilkan sintesis komprehensif 5 bagian:
+                Klik tombol <strong className="text-cyan-300">"Generate Analisis Si JAKA"</strong> di kanan atas. Asisten Cerdas Si JAKA akan membaca posisi layar Anda secara real-time dan menghasilkan sintesis komprehensif 5 bagian:
               </p>
             </div>
 
@@ -504,8 +542,13 @@ export default function AiInsightCard({
               </div>
             </div>
 
-            <div className="pt-2 text-[11px] text-indigo-300/70 font-mono">
-              Silakan klik tombol <strong className="text-cyan-400 font-sans">"Generate Analisis AI"</strong> di header kartu di atas untuk memulai.
+            <div className="pt-2 text-[11px] text-indigo-300/80 font-mono flex flex-col items-center gap-1.5">
+              <div>
+                Silakan klik tombol <strong className="text-cyan-400 font-sans">"Generate Analisis Si JAKA"</strong> di header kartu di atas untuk memulai.
+              </div>
+              <div className="text-[10px] text-slate-400">
+                💡 Jika ulasan yang dihasilkan memerlukan sudut pandang baru atau kurang lengkap, Anda dapat memperbaruinya sewaktu-waktu melalui tombol <strong>"Perbarui Analisis"</strong>.
+              </div>
             </div>
           </div>
         )}
