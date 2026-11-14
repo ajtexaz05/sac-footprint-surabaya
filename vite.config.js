@@ -1,10 +1,13 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import dns from 'dns'
+import { SYSTEM_INSTRUCTION, AI_CONFIG, isQuotaError } from './src/utils/aiPrompt.js'
 
 try {
   dns.setDefaultResultOrder('ipv4first')
-} catch {}
+} catch {
+  /* ignore DNS configuration error on systems where not supported */
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -17,13 +20,6 @@ export default defineConfig(({ mode }) => {
         name: 'local-vercel-api-middleware',
         configureServer(server) {
           // Middleware lokal untuk meniru Vercel Serverless Function /api/generate di localhost
-          server.middlewares.use('/api/key', (req, res) => {
-            const apiKey = process.env.SECRET_AI_API_KEY || env.SECRET_AI_API_KEY
-            res.setHeader('Access-Control-Allow-Origin', '*')
-            res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify({ apiKey }))
-          })
-
           server.middlewares.use('/api/generate', (req, res) => {
             if (req.method === 'OPTIONS') {
               res.statusCode = 200
@@ -47,85 +43,82 @@ export default defineConfig(({ mode }) => {
             })
 
             req.on('end', async () => {
+              let parsed
               try {
-                const parsed = JSON.parse(body || '{}')
-                const { promptContext, model } = parsed
-                const apiKey = process.env.SECRET_AI_API_KEY || env.SECRET_AI_API_KEY
+                parsed = JSON.parse(body || '{}')
+              } catch {
+                res.statusCode = 400
+                res.setHeader('Content-Type', 'application/json')
+                res.end(JSON.stringify({ error: 'Invalid JSON request body' }))
+                return
+              }
 
-                if (!apiKey) {
-                  res.statusCode = 500
-                  res.setHeader('Content-Type', 'application/json')
-                  res.end(JSON.stringify({
-                    error: 'API Key belum disetel di file .env lokal (SECRET_AI_API_KEY). Buat file .env di folder proyek dan isi dengan API Key OpenAgentic Anda.'
-                  }))
-                  return
-                }
+              const { promptContext, model } = parsed
+              const apiKey = process.env.SECRET_AI_API_KEY || env.SECRET_AI_API_KEY
 
-                let targetModel = model || 'kimi-k3.1-pro'
-                if (targetModel === 'kimi-k3-1-pro') targetModel = 'kimi-k3.1-pro'
+              if (!apiKey) {
+                res.statusCode = 500
+                res.setHeader('Content-Type', 'application/json')
+                res.end(JSON.stringify({
+                  error: 'API Key belum disetel di file .env lokal (SECRET_AI_API_KEY). Buat file .env di folder proyek dan isi dengan API Key OpenAgentic Anda.'
+                }))
+                return
+              }
 
-                // Set SSE Headers untuk streaming real-time
-                res.writeHead(200, {
-                  'Content-Type': 'text/event-stream; charset=utf-8',
-                  'Cache-Control': 'no-cache, no-transform',
-                  'Connection': 'keep-alive',
-                  'Access-Control-Allow-Origin': '*'
-                })
+              let targetModel = model || AI_CONFIG.model
+              if (targetModel === 'kimi-k3-1-pro') targetModel = AI_CONFIG.model
 
-                // Kirim keep-alive awal langsung ke client
-                res.write(': keep-alive start\n\n')
-                res.write(`data: ${JSON.stringify({ status: 'thinking' })}\n\n`)
+              // Set SSE Headers untuk streaming real-time
+              res.writeHead(200, {
+                'Content-Type': 'text/event-stream; charset=utf-8',
+                'Cache-Control': 'no-cache, no-transform',
+                'Connection': 'keep-alive',
+                'Access-Control-Allow-Origin': '*'
+              })
 
-                // Heartbeat interval 2.5 detik untuk menjaga socket tetap aktif selama AI menalar
-                let hasReceivedContent = false
-                const heartbeat = setInterval(() => {
-                  if (!res.writableEnded && !hasReceivedContent) {
-                    try {
-                      res.write(`data: ${JSON.stringify({ status: 'thinking' })}\n\n`)
-                    } catch {
-                      clearInterval(heartbeat)
-                    }
+              // Kirim keep-alive awal langsung ke client
+              res.write(': keep-alive start\n\n')
+              res.write(`data: ${JSON.stringify({ status: 'thinking' })}\n\n`)
+
+              // Heartbeat interval 2.5 detik untuk menjaga socket tetap aktif selama AI menalar
+              let hasReceivedContent = false
+              const heartbeat = setInterval(() => {
+                if (!res.writableEnded && !hasReceivedContent) {
+                  try {
+                    res.write(`data: ${JSON.stringify({ status: 'thinking' })}\n\n`)
+                  } catch {
+                    clearInterval(heartbeat)
                   }
-                }, 2500)
+                }
+              }, 2500)
 
-                const systemInstruction = `Kamu adalah Asisten Ahli AI Senior untuk SI JAKA PANTAU (Sistem Informasi Jejak Karbon dan Polutan Atmosfer Surabaya).
-Tuliskan laporan analisis sintesis ilmiah mendalam, kaya data, dan komprehensif dalam 5 bagian terstruktur:
-### 1. Peta Spasial & Koridor Hotspot Surabaya
-Ulas pola sebaran spasial, interpretasikan rentang skala visual peta (min-max), dan bedah koridor hotspot konsentrasi tertinggi di Surabaya dengan menghubungkannya ke kawasan industri, pelabuhan, atau lalu lintas.
+              const abortController = new AbortController()
+              const cleanup = () => {
+                clearInterval(heartbeat)
+                if (!abortController.signal.aborted) {
+                  abortController.abort()
+                }
+              }
 
-### 2. Peringkat Emisi Sektoral & Kontributor Antropogenik Utama
-Ulas peringkat kontributor emisi EDGAR v2026 Kota Surabaya (sektor terbesar, persentase kontribusi, dan mekanisme aktivitasnya terhadap pelepasan polutan/karbon kota).
+              res.on('close', cleanup)
 
-### 3. Dinamika Tren Temporal & Komparasi Antar-Tahun
-Analisis kurva grafik temporal (titik puncak dan terendah beserta faktor pemicunya). Bedah hasil komparasi antar-tahun pembanding terpilih (arah perubahan, angka, persentase, dan implikasi jangka panjangnya).
-
-### 4. Analisis Risiko Lingkungan & Kesehatan Warga
-Ulas dampak pajanan bagi kesehatan warga dan kelompok rentan (anak-anak, lansia, pekerja luar ruangan). Berikan edukasi ilmiah mengenai batasan data kolom troposfer satelit dibanding konsentrasi ambien di permukaan tanah.
-
-### 5. Rekomendasi Kebijakan Mitigasi Terukur Pemkot Surabaya
-Rumuskan program aksi terukur dan aplikatif untuk instansi Pemkot Surabaya (DLH, Dishub, dsb.), mencakup pengawasan emisi sumber bergerak dan industri, penataan koridor transportasi, sensor darat, dan RTH.
-
-ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
-- Gunakan nama resmi aplikasi: SI JAKA PANTAU.
-- Bahasa: 100% BAHASA INDONESIA yang baku, formal, dan ilmiah.
-- Penalaran internal (thinking) WAJIB SANGAT SINGKAT (maksimal 1-2 kalimat). Jangan berdiskusi panjang dalam thinking, LANGSUNG mulai tulis ulasan di output akhir dalam 5-10 detik pertama!
-- Tuliskan 2-3 poin paragraf yang padat data konkret, analitis, mendalam, dan langsung to-the-point tanpa kalimat pembuka basa-basi (sekitar 700 - 850 kata).
-- Tuliskan lengkap dan tuntas dari Bagian 1 sampai selesai Bagian 5 tanpa terpotong!`
-
+              try {
                 const openAgenticRes = await fetch('https://openagentic.id/api/v1/chat/completions', {
                   method: 'POST',
                   headers: {
                     'Authorization': `Bearer ${apiKey}`,
                     'Content-Type': 'application/json'
                   },
+                  signal: abortController.signal,
                   body: JSON.stringify({
                     model: targetModel,
                     stream: true,
                     messages: [
-                      { role: 'system', content: systemInstruction },
+                      { role: 'system', content: SYSTEM_INSTRUCTION },
                       { role: 'user', content: promptContext }
                     ],
-                    max_tokens: 16384
+                    max_tokens: AI_CONFIG.maxTokens,
+                    temperature: AI_CONFIG.temperature
                   })
                 })
 
@@ -133,30 +126,32 @@ ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
                   clearInterval(heartbeat)
                   const errText = await openAgenticRes.text()
                   let errMsg = `Error dari OpenAgentic (Status ${openAgenticRes.status})`
-                  let isQuota = false
+                  let quotaDetected = false
                   try {
                     const errJson = JSON.parse(errText)
                     errMsg = errJson?.error?.message || errMsg
-                    isQuota = openAgenticRes.status === 402 || openAgenticRes.status === 429 || /quota|credit|saldo|balance|exceeded|habis|limit|insufficient/i.test(errMsg)
-                  } catch {}
+                    quotaDetected = isQuotaError(openAgenticRes.status, errMsg)
+                  } catch {
+                    /* ignore json parse error */
+                  }
 
-                  res.write(`data: ${JSON.stringify({ error: errMsg, isQuotaExhausted: isQuota })}\n\n`)
+                  res.write(`data: ${JSON.stringify({ error: errMsg, isQuotaExhausted: quotaDetected })}\n\n`)
                   res.end()
                   return
                 }
 
                 const reader = openAgenticRes.body.getReader()
                 const decoder = new TextDecoder('utf-8')
-                let buffer = ''
+                let streamBuffer = ''
                 let contentDelivered = false
 
                 while (true) {
                   const { done, value } = await reader.read()
                   if (done) break
 
-                  buffer += decoder.decode(value, { stream: true })
-                  const lines = buffer.split('\n')
-                  buffer = lines.pop() || ''
+                  streamBuffer += decoder.decode(value, { stream: true })
+                  const lines = streamBuffer.split('\n')
+                  streamBuffer = lines.pop() || ''
 
                   for (const line of lines) {
                     const trimmed = line.trim()
@@ -164,8 +159,8 @@ ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
 
                     if (trimmed.startsWith('data: ')) {
                       try {
-                        const parsed = JSON.parse(trimmed.slice(6))
-                        const delta = parsed.choices?.[0]?.delta
+                        const chunkData = JSON.parse(trimmed.slice(6))
+                        const delta = chunkData.choices?.[0]?.delta
 
                         // HANYA kirim teks ulasan akhir (content), buang monolog reasoning internal Kimi
                         if (delta?.content) {
@@ -176,7 +171,9 @@ ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
                           contentDelivered = true
                           res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`)
                         }
-                      } catch {}
+                      } catch {
+                        /* ignore incomplete chunk */
+                      }
                     }
                   }
                 }
@@ -190,8 +187,11 @@ ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
                 res.write('data: [DONE]\n\n')
                 res.end()
               } catch (err) {
-                res.write(`data: ${JSON.stringify({ error: err.message || 'Gagal memproses permintaan di local development server.' })}\n\n`)
-                res.end()
+                clearInterval(heartbeat)
+                if (!res.writableEnded) {
+                  res.write(`data: ${JSON.stringify({ error: err.message || 'Gagal memproses permintaan di local development server.' })}\n\n`)
+                  res.end()
+                }
               }
             })
           })

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import Papa from 'papaparse'
 import { MapContainer, TileLayer, ImageOverlay } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -6,9 +6,10 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts'
-import PustakaPage from './components/PustakaPage'
-import TentangPage from './components/TentangPage'
 import AiInsightCard from './components/AiInsightCard'
+
+const PustakaPage = lazy(() => import('./components/PustakaPage'))
+const TentangPage = lazy(() => import('./components/TentangPage'))
 
 // ============================================================
 // CONSTANTS & METADATA
@@ -327,9 +328,10 @@ function App() {
     return [[south, west], [north, east]]
   }, [activeSection, mapOffsetX, mapOffsetY, mapScaleX, mapScaleY])
 
-  // Penyesuaian rentang tahun saat berpindah indikator/seksi
-  useEffect(() => {
-    if (activeSection === 'atmosfer') {
+  // Handlers untuk penyesuaian rentang tahun saat berpindah indikator/seksi
+  const handleSectionChange = (section) => {
+    setActiveSection(section)
+    if (section === 'atmosfer') {
       if (activeIndicator === 'AOD055') {
         if (!EDGAR_YEARS.includes(activeYear)) setActiveYear(2025)
         setYearA(2000)
@@ -344,7 +346,20 @@ function App() {
       setYearA(2000)
       setYearB(2025)
     }
-  }, [activeSection, activeIndicator])
+  }
+
+  const handleIndicatorChange = (indicator) => {
+    setActiveIndicator(indicator)
+    if (indicator === 'AOD055') {
+      if (!EDGAR_YEARS.includes(activeYear)) setActiveYear(2025)
+      setYearA(2000)
+      setYearB(2025)
+    } else {
+      if (!ATMOSFER_YEARS.includes(activeYear)) setActiveYear(2025)
+      setYearA(2019)
+      setYearB(2025)
+    }
+  }
 
   // ============================================================
   // COMPUTED — ATMOSFER
@@ -409,7 +424,7 @@ function App() {
     const prev = atmosYearlyChart.find(d => d.year === activeYear - 1)
     const validVals = atmosYearlyChart.filter(d => d.value != null).map(d => d.value)
     const avg = validVals.length > 0 ? validVals.reduce((a, b) => a + b, 0) / validVals.length : null
-    const change = curr && prev && prev.value ? pctChange(curr.value, prev.value) : null
+    const change = curr?.value != null && prev?.value != null ? pctChange(curr.value, prev.value) : null
     const firstYear = atmosYearlyChart[0]?.year
     const lastYear = atmosYearlyChart[atmosYearlyChart.length - 1]?.year
     return {
@@ -425,7 +440,7 @@ function App() {
     const b = atmosYearlyChart.find(d => d.year === yearB)
     const valA = a?.value ?? null
     const valB = b?.value ?? null
-    const change = valA && valB ? pctChange(valB, valA) : null
+    const change = valA != null && valB != null ? pctChange(valB, valA) : null
     return { valA, valB, change }
   }, [atmosYearlyChart, yearA, yearB])
 
@@ -513,30 +528,43 @@ function App() {
   // Sinkronisasi & Preloading Peta Spasial (mencegah blank/freeze saat ganti sektor/bulan)
   const targetMapUrl = isAtmosfer ? atmosMapUrl : edgarMapUrl
   const [displayedMapUrl, setDisplayedMapUrl] = useState(targetMapUrl)
-  const [isMapLoading, setIsMapLoading] = useState(false)
+  const isMapLoading = Boolean(targetMapUrl && targetMapUrl !== displayedMapUrl)
 
   useEffect(() => {
+    let isCancelled = false
+
     if (!targetMapUrl) {
-      setDisplayedMapUrl(null)
-      setIsMapLoading(false)
-      return
+      if (displayedMapUrl !== null) {
+        queueMicrotask(() => {
+          if (!isCancelled) {
+            setDisplayedMapUrl(null)
+          }
+        })
+      }
+      return () => {
+        isCancelled = true
+      }
     }
 
     if (targetMapUrl === displayedMapUrl) {
-      setIsMapLoading(false)
       return
     }
 
-    setIsMapLoading(true)
     const img = new Image()
     img.src = targetMapUrl
     img.onload = () => {
-      setDisplayedMapUrl(targetMapUrl)
-      setIsMapLoading(false)
+      if (!isCancelled) {
+        setDisplayedMapUrl(targetMapUrl)
+      }
     }
     img.onerror = () => {
-      setDisplayedMapUrl(targetMapUrl)
-      setIsMapLoading(false)
+      if (!isCancelled) {
+        setDisplayedMapUrl(targetMapUrl)
+      }
+    }
+
+    return () => {
+      isCancelled = true
     }
   }, [targetMapUrl, displayedMapUrl])
 
@@ -550,11 +578,6 @@ function App() {
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
-  }
-
-  const scrollToMetadata = () => {
-    const el = document.getElementById('metadata-section')
-    if (el) el.scrollIntoView({ behavior: 'smooth' })
   }
 
   return (
@@ -924,15 +947,22 @@ function App() {
       )}
 
       <main className="px-6 lg:px-12 py-8 max-w-6xl mx-auto space-y-10 relative z-10">
-        {currentPage === 'pustaka' && <PustakaPage />}
-        {currentPage === 'tentang' && <TentangPage />}
+        <Suspense fallback={
+          <div className="py-24 text-center space-y-4">
+            <div className="w-8 h-8 mx-auto border-2 border-cyan-400 border-t-transparent rounded-full animate-spin shadow-neon-blue"></div>
+            <p className="text-xs text-slate-400 font-mono">Memuat konten halaman...</p>
+          </div>
+        }>
+          {currentPage === 'pustaka' && <PustakaPage />}
+          {currentPage === 'tentang' && <TentangPage />}
+        </Suspense>
         {currentPage === 'beranda' && (
           <>
             {/* ==================== TOGGLE PILIHAN (DI BAWAH NAVBAR & CENTER) ==================== */}
         <div className="flex justify-center pt-2">
           <div className="inline-flex bg-[#0a1120] p-1.5 rounded-2xl border border-blue-900/50 shadow-neon-blue">
             <button
-              onClick={() => setActiveSection('atmosfer')}
+              onClick={() => handleSectionChange('atmosfer')}
               className={`px-6 py-2.5 text-xs md:text-sm font-bold rounded-xl transition-all duration-300 flex items-center gap-2 ${
                 activeSection === 'atmosfer'
                   ? 'bg-blue-600 text-white shadow-neon-blue border border-blue-400/50'
@@ -942,7 +972,7 @@ function App() {
               Polutan & Atmosfer
             </button>
             <button
-              onClick={() => setActiveSection('edgar')}
+              onClick={() => handleSectionChange('edgar')}
               className={`px-6 py-2.5 text-xs md:text-sm font-bold rounded-xl transition-all duration-300 flex items-center gap-2 ${
                 activeSection === 'edgar'
                   ? 'bg-blue-600 text-white shadow-neon-blue border border-blue-400/50'
@@ -977,7 +1007,7 @@ function App() {
                 {ATMOSFER_VARS.map(v => (
                   <button
                     key={v}
-                    onClick={() => setActiveIndicator(v)}
+                    onClick={() => handleIndicatorChange(v)}
                     className={`px-3 py-2 text-xs font-bold rounded-lg transition-all duration-300 ${
                       activeIndicator === v
                         ? 'bg-blue-600 text-white shadow-neon-blue border border-blue-400/50'
@@ -1328,9 +1358,11 @@ function App() {
                 zoom={12}
                 className="w-full h-full absolute inset-0"
                 zoomControl={true}
-                attributionControl={false}
               >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
                 {displayedMapUrl && (
                   <ImageOverlay
                     key={`${displayedMapUrl}_${mapOffsetX}_${mapOffsetY}_${mapScaleX}_${mapScaleY}`}

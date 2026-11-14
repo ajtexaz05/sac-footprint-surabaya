@@ -1,4 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
+import {
+  AI_CONFIG,
+  buildDashboardPromptContext,
+  safeSaveAiCache
+} from '../utils/aiPrompt'
 
 export default function AiInsightCard({
   activeSection,
@@ -31,30 +36,38 @@ export default function AiInsightCard({
   const [lastGeneratedContext, setLastGeneratedContext] = useState(null)
   const [isCopied, setIsCopied] = useState(false)
 
-  // Cache key unik untuk setiap kombinasi tampilan dashboard (v5 SI JAKA PANTAU - Tersimpan per-browser user di localStorage)
+  // Cache key unik untuk setiap kombinasi tampilan dashboard (v6 SI JAKA PANTAU - Tersimpan per-browser user di localStorage)
   const currentCacheKey = useMemo(() => {
     const itemKey = isAtmosfer ? activeIndicator : activeSector
-    return `sijaka_ai_v5_${activeSection}_${itemKey}_${activeYear}_${activeMonth}_${chartView}_${yearA}_${yearB}`
+    return `sijaka_ai_v6_${activeSection}_${itemKey}_${activeYear}_${activeMonth}_${chartView}_${yearA}_${yearB}`
   }, [activeSection, isAtmosfer, activeIndicator, activeSector, activeYear, activeMonth, chartView, yearA, yearB])
 
   // Sinkronisasi dengan localStorage browser lokal user saat berpindah indikator/tahun
   useEffect(() => {
+    let isCancelled = false
     try {
       const cached = localStorage.getItem(currentCacheKey)
-      if (cached) {
-        setAiOutput(cached)
-        setLastGeneratedContext(`${isAtmosfer ? indicatorMeta.label : sectorMeta.short} • ${monthName} ${activeYear}`)
-        setErrorMsg('')
-        setIsQuotaExhausted(false)
-      } else {
-        setAiOutput('')
-      }
+      // Gunakan queueMicrotask untuk mencegah synchronous cascading renders di React 19
+      queueMicrotask(() => {
+        if (isCancelled) return
+        if (cached) {
+          setAiOutput(cached)
+          setLastGeneratedContext(`${isAtmosfer ? indicatorMeta?.label : sectorMeta?.short} • ${monthName} ${activeYear}`)
+          setErrorMsg('')
+          setIsQuotaExhausted(false)
+        } else {
+          setAiOutput('')
+        }
+      })
     } catch {
-      // Abaikan jika storage dinonaktifkan
+      /* abaikan bila localStorage tidak tersedia */
+    }
+    return () => {
+      isCancelled = true
     }
   }, [currentCacheKey, isAtmosfer, indicatorMeta?.label, sectorMeta?.short, monthName, activeYear])
 
-  // Generate Analisis AI Komprehensif Membaca Seluruh Elemen di Layar
+  // Generate Analisis AI Komprehensif Melalui Secure Server Proxy /api/generate
   const handleGenerateAi = async (forceRefresh = false) => {
     if (!forceRefresh && aiOutput) return
 
@@ -62,158 +75,46 @@ export default function AiInsightCard({
     setErrorMsg('')
     setIsQuotaExhausted(false)
 
-    // 1. Ekstrak deskripsi peta spasial & skala visual
-    const skalaPetaDesc = activeScale
-      ? `${activeScale.title} dengan rentang skala visual Min: ${activeScale.min} hingga Max: ${activeScale.max} ${activeScale.unit}`
-      : 'Resolusi grid 0.1° (~11 km) berbasis batas wilayah Kota Surabaya'
-
-    // 2. Ekstrak data tren temporal grafik yang sedang aktif
-    let trenGrafikDesc = `Mode Grafik ${chartView}: `
-    if (chartData && chartData.length > 0) {
-      const validPoints = chartData.filter(d => d.value != null)
-      if (validPoints.length > 0) {
-        const minPt = validPoints.reduce((p, c) => (c.value < p.value ? c : p), validPoints[0])
-        const maxPt = validPoints.reduce((p, c) => (c.value > p.value ? c : p), validPoints[0])
-        trenGrafikDesc += `Puncak tertinggi tercatat pada ${maxPt.year || maxPt.month} (${isAtmosfer ? fmtNum(maxPt.value) : fmtTon(maxPt.value)} ${isAtmosfer ? indicatorMeta.displayUnit : 'ton CO₂'}), titik terendah pada ${minPt.year || minPt.month} (${isAtmosfer ? fmtNum(minPt.value) : fmtTon(minPt.value)} ${isAtmosfer ? indicatorMeta.displayUnit : 'ton CO₂'}).`
-      }
-    }
-
-    // 3. Ekstrak data hotspot spasial & koridor konsentrasi tertinggi
-    let hotspotDesc = ''
-    if (isAtmosfer && hotspots && hotspots.length > 0) {
-      hotspotDesc = hotspots.map((h, i) => `${i + 1}. ${h.name} (${h.val})`).join(', ')
-    } else {
-      hotspotDesc = 'Konsentrasi spasial emisi terakumulasi pada koridor logistik pelabuhan utara (Tanjung Perak), kawasan industri-pergudangan (Margomulyo & Rungkut), serta jalur arteri perlintasan utama Surabaya.'
-    }
-
-    // 4. Ekstrak peringkat emisi sektoral EDGAR v2026 Kota Surabaya
-    let rankingSektoralDesc = ''
-    if (edgarPieData && edgarPieData.length > 0) {
-      rankingSektoralDesc = edgarPieData.map((s, i) =>
-        `${i + 1}. ${s.fullName} [${s.name}]: ${fmtTon(s.value)} ton CO₂ (${edgarTotalCO2 > 0 ? ((s.value / edgarTotalCO2) * 100).toFixed(1) : 0}%)`
-      ).join('; ')
-    } else {
-      rankingSektoralDesc = 'Data emisi 8 sektor EDGAR v2026 (Transportasi, Industri Manufaktur, Energi, Residensial, dll).'
-    }
-
-    // 5. Ekstrak data komparasi antar-tahun pembanding
-    let komparasiDesc = ''
-    if (comparisonData && comparisonData.valA != null && comparisonData.valB != null) {
-      const delta = comparisonData.change != null ? comparisonData.change.toFixed(1) : '–'
-      const arah = comparisonData.change > 0 ? 'Kenaikan (+)' : comparisonData.change < 0 ? 'Penurunan (-)' : 'Stabil'
-      komparasiDesc = `Komparasi Tahun ${yearA} (${isAtmosfer ? fmtNum(comparisonData.valA) + ' ' + indicatorMeta.displayUnit : fmtTon(comparisonData.valA) + ' ton CO₂'}) terhadap Tahun ${yearB} (${isAtmosfer ? fmtNum(comparisonData.valB) + ' ' + indicatorMeta.displayUnit : fmtTon(comparisonData.valB) + ' ton CO₂'}): Tercatat perubahan ${arah} sebesar ${delta}%.`
-    } else {
-      komparasiDesc = `Perbandingan terpilih antara tahun ${yearA} dan ${yearB}.`
-    }
-
-    // 6. Susun konteks komprehensif seluruh elemen layar beranda beserta instruksi laporan
-    const promptContext = `DATA KONTEKS DASHBOARD BERANDA SI JAKA PANTAU (SISTEM INFORMASI JEJAK KARBON & POLUTAN ATMOSFER SURABAYA):
-- Sektor/Parameter Utama: ${isAtmosfer ? `${indicatorMeta.fullName} (${indicatorMeta.label})` : `${sectorMeta.label} (${sectorMeta.short})`}
-- Periode Aktif: Bulan ${monthName} Tahun ${activeYear} (Tampilan Grafik ${chartView})
-- Nilai Rata-rata/Total Terkini: ${isAtmosfer ? `${fmtNum(kpiData.latest)} ${indicatorMeta.displayUnit} (Perubahan YoY: ${kpiData.change != null ? (kpiData.change > 0 ? '+' : '') + kpiData.change.toFixed(1) + '%' : '–'})` : `Total Emisi Kota: ${fmtTon(kpiData.total)} ton CO₂ (Sektor Terbesar: ${kpiData.topSector?.name || '–'} ${fmtTon(kpiData.topSector?.value)} ton)`}
-- Peta Spasial & Skala Visual: ${skalaPetaDesc}
-- Koridor Hotspot / Konsentrasi Tertinggi di Surabaya: ${hotspotDesc}
-- Peringkat Kontribusi Emisi Sektoral EDGAR v2026: ${rankingSektoralDesc}
-- Dinamika Grafik Temporal (${chartView}): ${trenGrafikDesc}
-- Komparasi Antar-Tahun Terpilih (${yearA} vs ${yearB}): ${komparasiDesc}
-
-INSTRUKSI PENGGUNA:
-Berdasarkan seluruh data konteks di atas, buatkan laporan ulasan sintesis ilmiah AI yang sangat mendalam, kaya data numerik, ekstensif, dan lengkap dalam 5 bagian terstruktur:
-### 1. Peta Spasial & Koridor Hotspot Surabaya
-### 2. Peringkat Emisi Sektoral & Kontributor Antropogenik Utama
-### 3. Dinamika Tren Temporal & Komparasi Antar-Tahun
-### 4. Analisis Risiko Lingkungan & Kesehatan Warga
-### 5. Rekomendasi Kebijakan Mitigasi Terukur Pemkot Surabaya
-
-Uraikan secara panjang, detail, ilmiah, dan berbobot dari Bagian 1 sampai selesai Bagian 5 tuntas tanpa terpotong (100% Bahasa Indonesia).`
-
-    const systemInstruction = `Kamu adalah Asisten Ahli AI Senior untuk SI JAKA PANTAU (Sistem Informasi Jejak Karbon dan Polutan Atmosfer Surabaya).
-Tuliskan laporan analisis sintesis ilmiah mendalam, kaya data numerik, dan lengkap dalam 5 bagian terstruktur:
-### 1. Peta Spasial & Koridor Hotspot Surabaya
-Ulas pola sebaran spasial, interpretasikan rentang skala visual peta (min-max), dan bedah koridor hotspot konsentrasi tertinggi di Surabaya dengan menghubungkannya ke kawasan industri, pelabuhan, atau lalu lintas.
-
-### 2. Peringkat Emisi Sektoral & Kontributor Antropogenik Utama
-Ulas peringkat kontributor emisi EDGAR v2026 Kota Surabaya (sektor terbesar, persentase kontribusi, dan mekanisme aktivitasnya terhadap pelepasan polutan/karbon kota).
-
-### 3. Dinamika Tren Temporal & Komparasi Antar-Tahun
-Analisis kurva grafik temporal (titik puncak dan terendah beserta faktor pemicunya). Bedah hasil komparasi antar-tahun pembanding terpilih (arah perubahan, angka, persentase, dan implikasi jangka panjangnya).
-
-### 4. Analisis Risiko Lingkungan & Kesehatan Warga
-Ulas dampak pajanan bagi kesehatan warga dan kelompok rentan (anak-anak, lansia, pekerja luar ruangan). Berikan edukasi ilmiah mengenai batasan data kolom troposfer satelit dibanding konsentrasi ambien di permukaan tanah.
-
-### 5. Rekomendasi Kebijakan Mitigasi Terukur Pemkot Surabaya
-Rumuskan program aksi terukur dan aplikatif untuk instansi Pemkot Surabaya (DLH, Dishub, dsb.), mencakup pengawasan emisi sumber bergerak dan industri, penataan koridor transportasi, sensor darat, dan RTH.
-
-PANDUAN INTERPRETASI DATA:
-- Seluruh angka pada konteks adalah data resmi dashboard SI JAKA PANTAU.
-- Nilai kolom troposfer satelit SO2/O3/NO2 dinyatakan dalam mol/m². Nilai sangat kecil mendekati nol atau negatif pada grafik bulanan adalah noise instrumen/latar bersih troposfer.
-- Matriks EDGAR v2026 adalah basis inventaris sumber emisi antropogenik kota (bahan bakar, industri, transportasi).
-
-PEDOMAN PENULISAN:
-- Gunakan nama resmi aplikasi: SI JAKA PANTAU.
-- Bahasa: 100% BAHASA INDONESIA yang baku, ilmiah, dan formal.
-- Tuliskan ulasan dalam 2-3 poin paragraf mendalam per bagian (sekitar 800 - 1.100 kata).
-- Selesaikan seluruh Bagian 1 sampai selesai Bagian 5 tuntas tanpa terpotong!`
+    // Bangun data konteks terstruktur menggunakan shared prompt builder
+    const promptContext = buildDashboardPromptContext({
+      isAtmosfer,
+      activeSection,
+      indicatorMeta,
+      sectorMeta,
+      activeYear,
+      monthName,
+      chartView,
+      kpiData,
+      activeScale,
+      hotspots,
+      edgarPieData,
+      edgarTotalCO2,
+      chartData,
+      yearA,
+      yearB,
+      comparisonData,
+      fmtTon,
+      fmtNum
+    })
 
     try {
-      // 1. Ambil API Key secara aman dari server (/api/key) untuk streaming langsung dari peramban (bebas batas 60 detik Vercel)
-      let clientApiKey = null
-      try {
-        const keyRes = await fetch('/api/key')
-        if (keyRes.ok) {
-          const keyJson = await keyRes.json()
-          clientApiKey = keyJson.apiKey
-        }
-      } catch {}
-
-      let response = null
-      let isDirectStream = false
-
-      if (clientApiKey) {
-        try {
-          response = await fetch('https://openagentic.id/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${clientApiKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              model: 'kimi-k3.1-pro',
-              stream: true,
-              messages: [
-                { role: 'system', content: systemInstruction },
-                { role: 'user', content: `${promptContext}\n\nTuliskan laporan ulasan 5 bagian lengkap sekarang.` }
-              ],
-              max_tokens: 16384
-            })
-          })
-          if (response.ok) {
-            isDirectStream = true
-          }
-        } catch {
-          response = null
-        }
-      }
-
-      // 2. Jika streaming langsung peramban tidak dapat dijangkau, gunakan jalur serverless proxy /api/generate
-      if (!isDirectStream || !response || !response.ok) {
-        response = await fetch('/api/generate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            promptContext,
-            model: 'kimi-k3.1-pro'
-          })
+      // Panggil backend API serverless proxy (Kunci API tidak pernah diekspos ke browser)
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          promptContext,
+          model: AI_CONFIG.model
         })
-      }
+      })
 
       if (!response.ok) {
         throw new Error(`Server AI merespon dengan status error ${response.status}`)
       }
 
-      setLastGeneratedContext(`${isAtmosfer ? indicatorMeta.label : sectorMeta.short} • ${monthName} ${activeYear}`)
+      setLastGeneratedContext(`${isAtmosfer ? indicatorMeta?.label : sectorMeta?.short} • ${monthName} ${activeYear}`)
 
       // Membaca SSE Stream secara real-time
       const reader = response.body.getReader()
@@ -246,11 +147,9 @@ PEDOMAN PENULISAN:
                 throw new Error(data.error)
               }
 
-              // Ekstrak teks konten (kompatibel langsung dengan OpenAgentic delta.content maupun proxy data.content)
-              const contentPiece = isDirectStream ? data.choices?.[0]?.delta?.content : data.content
-
-              if (contentPiece) {
-                accumulatedText += contentPiece
+              // Ekstrak teks konten dari delta
+              if (data.content) {
+                accumulatedText += data.content
                 setAiOutput(accumulatedText)
               }
             } catch (parseError) {
@@ -263,9 +162,7 @@ PEDOMAN PENULISAN:
       }
 
       if (accumulatedText.trim()) {
-        try {
-          localStorage.setItem(currentCacheKey, accumulatedText)
-        } catch {}
+        safeSaveAiCache(currentCacheKey, accumulatedText)
       } else if (!detectedQuota) {
         throw new Error('Server AI membutuhkan waktu penalaran sedikit lebih lama untuk parameter ini. Silakan klik tombol "Perbarui Analisis" untuk memuat ulasan.')
       }
@@ -416,7 +313,7 @@ PEDOMAN PENULISAN:
             </button>
           )}
 
-          {/* SATU TOMBOL UTAMA GENERATE / REFRESH AI (Tidak Ada Duplikasi) */}
+          {/* SATU TOMBOL UTAMA GENERATE / REFRESH AI */}
           <button
             onClick={() => handleGenerateAi(!!aiOutput)}
             disabled={isLoading}

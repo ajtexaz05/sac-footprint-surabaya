@@ -1,7 +1,11 @@
 import dns from 'dns';
+import { SYSTEM_INSTRUCTION, AI_CONFIG, isQuotaError } from '../src/utils/aiPrompt.js';
+
 try {
   dns.setDefaultResultOrder('ipv4first');
-} catch {}
+} catch {
+  /* ignore DNS error on environments where unsupported */
+}
 
 export const config = {
   maxDuration: 60,
@@ -19,7 +23,16 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { promptContext, model } = req.body || {};
+  let body = req.body;
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body);
+    } catch {
+      return res.status(400).json({ error: 'Invalid JSON request body' });
+    }
+  }
+
+  const { promptContext, model } = body || {};
   const apiKey = process.env.SECRET_AI_API_KEY;
 
   if (!apiKey) {
@@ -28,7 +41,13 @@ export default async function handler(req, res) {
     });
   }
 
-  // Set SSE Streaming Headers agar respons langsung mengalir ke browser tanpa jeda/timeout
+  if (!promptContext) {
+    return res.status(400).json({
+      error: 'Parameter promptContext wajib disertakan.'
+    });
+  }
+
+  // Set SSE Streaming Headers
   res.writeHead(200, {
     'Content-Type': 'text/event-stream; charset=utf-8',
     'Cache-Control': 'no-cache, no-transform',
@@ -53,33 +72,25 @@ export default async function handler(req, res) {
     }
   }, 2500);
 
+  // Bersihkan heartbeat dan batalkan upstream saat klien memutuskan koneksi
+  const abortController = new AbortController();
+  const cleanup = () => {
+    clearInterval(heartbeat);
+    if (!abortController.signal.aborted) {
+      abortController.abort();
+    }
+  };
+
+  res.on('close', cleanup);
+
+  // Batas waktu timeout 55 detik agar upstream berhenti rapi sebelum hard kill 60s Vercel
+  const timeoutId = setTimeout(() => {
+    cleanup();
+  }, 55000);
+
   try {
-    let targetModel = model || 'kimi-k3.1-pro';
-    if (targetModel === 'kimi-k3-1-pro') targetModel = 'kimi-k3.1-pro';
-
-    const systemInstruction = `Kamu adalah Asisten Ahli AI Senior untuk SI JAKA PANTAU (Sistem Informasi Jejak Karbon dan Polutan Atmosfer Surabaya).
-Tuliskan laporan analisis sintesis ilmiah mendalam, kaya data, dan komprehensif dalam 5 bagian terstruktur:
-### 1. Peta Spasial & Koridor Hotspot Surabaya
-Ulas pola sebaran spasial, interpretasikan rentang skala visual peta (min-max), dan bedah koridor hotspot konsentrasi tertinggi di Surabaya dengan menghubungkannya ke kawasan industri, pelabuhan, atau lalu lintas.
-
-### 2. Peringkat Emisi Sektoral & Kontributor Antropogenik Utama
-Ulas peringkat kontributor emisi EDGAR v2026 Kota Surabaya (sektor terbesar, persentase kontribusi, dan mekanisme aktivitasnya terhadap pelepasan polutan/karbon kota).
-
-### 3. Dinamika Tren Temporal & Komparasi Antar-Tahun
-Analisis kurva grafik temporal (titik puncak dan terendah beserta faktor pemicunya). Bedah hasil komparasi antar-tahun pembanding terpilih (arah perubahan, angka, persentase, dan implikasi jangka panjangnya).
-
-### 4. Analisis Risiko Lingkungan & Kesehatan Warga
-Ulas dampak pajanan bagi kesehatan warga dan kelompok rentan (anak-anak, lansia, pekerja luar ruangan). Berikan edukasi ilmiah mengenai batasan data kolom troposfer satelit dibanding konsentrasi ambien di permukaan tanah.
-
-### 5. Rekomendasi Kebijakan Mitigasi Terukur Pemkot Surabaya
-Rumuskan program aksi terukur dan aplikatif untuk instansi Pemkot Surabaya (DLH, Dishub, dsb.), mencakup pengawasan emisi sumber bergerak dan industri, penataan koridor transportasi, sensor darat, dan RTH.
-
-ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
-- Gunakan nama resmi aplikasi: SI JAKA PANTAU.
-- Bahasa: 100% BAHASA INDONESIA yang baku, formal, dan ilmiah.
-- Penalaran internal (thinking) WAJIB SANGAT SINGKAT (maksimal 1-2 kalimat). Jangan berdiskusi panjang dalam thinking, LANGSUNG mulai tulis ulasan di output akhir dalam 5-10 detik pertama!
-- Tuliskan 2-3 poin paragraf yang padat data konkret, analitis, mendalam, dan langsung to-the-point tanpa kalimat pembuka basa-basi (sekitar 700 - 850 kata).
-- Tuliskan lengkap dan tuntas dari Bagian 1 sampai selesai Bagian 5 tanpa terpotong!`;
+    let targetModel = model || AI_CONFIG.model;
+    if (targetModel === 'kimi-k3-1-pro') targetModel = AI_CONFIG.model;
 
     const openAgenticRes = await fetch('https://openagentic.id/api/v1/chat/completions', {
       method: 'POST',
@@ -87,29 +98,34 @@ ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
+      signal: abortController.signal,
       body: JSON.stringify({
         model: targetModel,
         stream: true,
         messages: [
-          { role: 'system', content: systemInstruction },
+          { role: 'system', content: SYSTEM_INSTRUCTION },
           { role: 'user', content: promptContext }
         ],
-        max_tokens: 16384
+        max_tokens: AI_CONFIG.maxTokens,
+        temperature: AI_CONFIG.temperature
       })
     });
 
     if (!openAgenticRes.ok) {
+      clearTimeout(timeoutId);
       clearInterval(heartbeat);
       const errText = await openAgenticRes.text();
       let errMsg = `Error dari OpenAgentic (Status ${openAgenticRes.status})`;
-      let isQuota = false;
+      let quotaDetected = false;
       try {
         const errJson = JSON.parse(errText);
         errMsg = errJson?.error?.message || errMsg;
-        isQuota = openAgenticRes.status === 402 || openAgenticRes.status === 429 || /quota|credit|saldo|balance|exceeded|habis|limit|insufficient/i.test(errMsg);
-      } catch {}
+        quotaDetected = isQuotaError(openAgenticRes.status, errMsg);
+      } catch {
+        /* ignore parse error */
+      }
 
-      res.write(`data: ${JSON.stringify({ error: errMsg, isQuotaExhausted: isQuota })}\n\n`);
+      res.write(`data: ${JSON.stringify({ error: errMsg, isQuotaExhausted: quotaDetected })}\n\n`);
       res.end();
       return;
     }
@@ -145,11 +161,14 @@ ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
               contentDelivered = true;
               res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
             }
-          } catch {}
+          } catch {
+            /* ignore malformed chunk */
+          }
         }
       }
     }
 
+    clearTimeout(timeoutId);
     clearInterval(heartbeat);
 
     if (!contentDelivered) {
@@ -159,9 +178,15 @@ ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
     res.write('data: [DONE]\n\n');
     res.end();
   } catch (err) {
+    clearTimeout(timeoutId);
     clearInterval(heartbeat);
-    console.error('Serverless Stream Error:', err);
-    res.write(`data: ${JSON.stringify({ error: 'Terjadi gangguan koneksi ke server AI: ' + err.message })}\n\n`);
-    res.end();
+    if (!res.writableEnded) {
+      const isAbort = err.name === 'AbortError' || abortController.signal.aborted;
+      const errorText = isAbort
+        ? 'Batas waktu penalaran server tercapai (55s). Silakan klik "Perbarui Analisis" untuk memuat kembali ulasan.'
+        : 'Terjadi gangguan koneksi ke server AI: ' + err.message;
+      res.write(`data: ${JSON.stringify({ error: errorText })}\n\n`);
+      res.end();
+    }
   }
 }
