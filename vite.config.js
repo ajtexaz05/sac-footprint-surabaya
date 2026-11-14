@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
       {
         name: 'local-vercel-api-middleware',
         configureServer(server) {
-          // Middleware lokal untuk meniru Vercel Serverless Function /api/generate di localhost
+          // Middleware lokal untuk meniru Vercel Serverless/Edge Function /api/generate di localhost
           server.middlewares.use('/api/generate', (req, res) => {
             if (req.method === 'OPTIONS') {
               res.statusCode = 200
@@ -35,6 +35,14 @@ export default defineConfig(({ mode }) => {
               res.setHeader('Content-Type', 'application/json')
               res.end(JSON.stringify({ error: 'Method Not Allowed' }))
               return
+            }
+
+            // Nonaktifkan socket timeout agar streaming durasi panjang (3-5 menit) tidak diputus oleh server lokal
+            if (req.socket) {
+              req.socket.setTimeout(0)
+            }
+            if (res.socket) {
+              res.socket.setTimeout(0)
             }
 
             let body = ''
@@ -73,6 +81,7 @@ export default defineConfig(({ mode }) => {
                 'Content-Type': 'text/event-stream; charset=utf-8',
                 'Cache-Control': 'no-cache, no-transform',
                 'Connection': 'keep-alive',
+                'X-Accel-Buffering': 'no',
                 'Access-Control-Allow-Origin': '*'
               })
 
@@ -80,17 +89,16 @@ export default defineConfig(({ mode }) => {
               res.write(': keep-alive start\n\n')
               res.write(`data: ${JSON.stringify({ status: 'thinking' })}\n\n`)
 
-              // Heartbeat interval 2.5 detik untuk menjaga socket tetap aktif selama AI menalar
-              let hasReceivedContent = false
+              // Heartbeat interval 3 detik terus berjalan untuk menjaga TCP socket tetap hidup
               const heartbeat = setInterval(() => {
-                if (!res.writableEnded && !hasReceivedContent) {
+                if (!res.writableEnded) {
                   try {
-                    res.write(`data: ${JSON.stringify({ status: 'thinking' })}\n\n`)
+                    res.write(': keep-alive ping\n\n')
                   } catch {
                     clearInterval(heartbeat)
                   }
                 }
-              }, 2500)
+              }, 3000)
 
               const abortController = new AbortController()
               const cleanup = () => {
@@ -164,10 +172,6 @@ export default defineConfig(({ mode }) => {
 
                         // HANYA kirim teks ulasan akhir (content), buang monolog reasoning internal Kimi
                         if (delta?.content) {
-                          if (!hasReceivedContent) {
-                            hasReceivedContent = true
-                            clearInterval(heartbeat)
-                          }
                           contentDelivered = true
                           res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`)
                         }

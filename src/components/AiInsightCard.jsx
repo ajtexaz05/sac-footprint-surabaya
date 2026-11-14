@@ -97,8 +97,10 @@ export default function AiInsightCard({
       fmtNum
     })
 
+    let accumulatedText = ''
+
     try {
-      // Panggil backend API serverless proxy (Kunci API tidak pernah diekspos ke browser)
+      // Panggil backend API serverless/edge proxy (Kunci API tidak pernah diekspos ke browser)
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
@@ -119,7 +121,6 @@ export default function AiInsightCard({
       // Membaca SSE Stream secara real-time
       const reader = response.body.getReader()
       const decoder = new TextDecoder('utf-8')
-      let accumulatedText = ''
       let buffer = ''
       let detectedQuota = false
 
@@ -176,8 +177,10 @@ export default function AiInsightCard({
         message = 'Terjadi kesalahan saat memproses permintaan AI.'
       }
       
-      // Jika teks analisis sudah ada sebagian atau lengkap, pertahankan teks tersebut
-      if (!aiOutput) {
+      // Jika sudah ada teks analisis yang mengalir, simpan teks tersebut dan jangan timpa dengan pesan error kosong
+      if (accumulatedText.trim()) {
+        safeSaveAiCache(currentCacheKey, accumulatedText)
+      } else {
         setErrorMsg(message)
       }
     } finally {

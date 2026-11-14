@@ -30,12 +30,12 @@ Ulas dampak pajanan bagi kesehatan warga dan kelompok rentan (anak-anak, lansia,
 ### 5. Rekomendasi Kebijakan Mitigasi Terukur Pemkot Surabaya
 Rumuskan program aksi terukur dan aplikatif untuk instansi Pemkot Surabaya (DLH, Dishub, dsb.), mencakup pengawasan emisi sumber bergerak dan industri, penataan koridor transportasi, sensor darat, dan RTH.
 
-ATURAN MUTLAK KINERJA CEPAT & LENGKAP:
+ATURAN STRUKTUR & KINERJA LENGKAP:
 - Gunakan nama resmi aplikasi: SI JAKA PANTAU.
 - Bahasa: 100% BAHASA INDONESIA yang baku, formal, dan ilmiah.
-- Penalaran internal (thinking) WAJIB SANGAT SINGKAT (maksimal 1-2 kalimat). Jangan berdiskusi panjang dalam thinking, LANGSUNG mulai tulis ulasan di output akhir dalam 5-10 detik pertama!
-- Tuliskan 2-3 poin paragraf per bagian yang padat data konkret, analitis, mendalam, dan langsung to-the-point tanpa kalimat pembuka basa-basi (sekitar 750 - 900 kata).
-- Tuliskan lengkap dan tuntas dari Bagian 1 sampai selesai Bagian 5 tanpa terpotong!`
+- STRUKTUR: Langsung gunakan 5 judul utama tingkat 3 (### 1. sampai ### 5.). JANGAN membuat puluhan sub-bab bernomor berantai (seperti 1.1, 1.2, 5.1 dst) agar alur bahasan tetap terfokus, padat, dan tuntas.
+- KEDALAMAN: Tuliskan 2-3 paragraf analitis mendalam per bagian yang padat data numerik konkret, analitis, dan aplikatif (target total 900 - 1.250 kata).
+- Tuntaskan seluruh Bagian 1 sampai selesai Bagian 5 secara lengkap tanpa terpotong!`
 
 /**
  * Format string data konteks dari state dashboard aktif
@@ -112,14 +112,14 @@ export function buildDashboardPromptContext({
 - Komparasi Antar-Tahun Terpilih (${yearA} vs ${yearB}): ${komparasiDesc}
 
 INSTRUKSI PENGGUNA:
-Berdasarkan seluruh data konteks di atas, buatkan laporan ulasan sintesis ilmiah AI yang sangat mendalam, kaya data numerik, ekstensif, dan lengkap dalam 5 bagian terstruktur:
+Berdasarkan seluruh data konteks di atas, buatkan laporan ulasan sintesis ilmiah AI yang mendalam, kaya data numerik, dan lengkap dalam 5 bagian terstruktur:
 ### 1. Peta Spasial & Koridor Hotspot Surabaya
 ### 2. Peringkat Emisi Sektoral & Kontributor Antropogenik Utama
 ### 3. Dinamika Tren Temporal & Komparasi Antar-Tahun
 ### 4. Analisis Risiko Lingkungan & Kesehatan Warga
 ### 5. Rekomendasi Kebijakan Mitigasi Terukur Pemkot Surabaya
 
-Uraikan secara panjang, detail, ilmiah, dan berbobot dari Bagian 1 sampai selesai Bagian 5 tuntas tanpa terpotong (100% Bahasa Indonesia).`
+Uraikan secara ilmiah, analitis, dan berbobot dari Bagian 1 sampai selesai Bagian 5 tuntas tanpa terpotong (100% Bahasa Indonesia).`
 }
 
 /**
