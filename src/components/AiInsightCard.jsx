@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   AI_CONFIG,
   buildDashboardPromptContext,
@@ -35,6 +35,14 @@ export default function AiInsightCard({
   const [isQuotaExhausted, setIsQuotaExhausted] = useState(false)
   const [lastGeneratedContext, setLastGeneratedContext] = useState(null)
   const [isCopied, setIsCopied] = useState(false)
+  const scrollContainerRef = useRef(null)
+
+  // Auto-scroll ke bawah secara halus selama proses live-streaming agar kursor teks selalu terlihat
+  useEffect(() => {
+    if (isLoading && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight
+    }
+  }, [aiOutput, isLoading])
 
   // Cache key unik untuk setiap kombinasi tampilan dashboard (v6 SI JAKA PANTAU - Tersimpan per-browser user di localStorage)
   const currentCacheKey = useMemo(() => {
@@ -414,7 +422,10 @@ export default function AiInsightCard({
               </div>
             </div>
             {/* Kotak responsif: tinggi otomatis menyesuaikan konten, dan jika panjang dapat di-scroll dengan elegan */}
-            <div className="max-h-[580px] overflow-y-auto pr-2 custom-scrollbar space-y-2">
+            <div
+              ref={scrollContainerRef}
+              className="max-h-[600px] overflow-y-auto pr-2 custom-scrollbar space-y-2 scroll-smooth"
+            >
               {renderFormattedAiText(aiOutput)}
               {isLoading && (
                 <span className="inline-block w-2 h-4 bg-cyan-400 animate-pulse ml-1 align-middle"></span>
