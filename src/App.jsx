@@ -609,8 +609,9 @@ function App() {
             />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-bold tracking-tight text-white font-display group-hover:text-cyan-300 transition-colors">
-                  SI JAKA PANTAU
+                <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-tight text-white font-display group-hover:text-cyan-300 transition-colors">
+                  <span className="hidden sm:inline">SI JAKA PANTAU SURABAYA</span>
+                  <span className="sm:hidden">SI JAKA PANTAU</span>
                 </h1>
               </div>
               <p className="text-[9px] text-blue-400/80 font-medium hidden sm:block">
@@ -914,15 +915,15 @@ function App() {
         <div className="flex flex-col items-center text-center gap-6 border-b border-blue-900/30 pb-10">
           <div>
             <div className="inline-flex items-center gap-2 bg-blue-950/60 border border-blue-500/30 px-3.5 py-1 rounded-full text-xs font-semibold text-blue-300 mb-3">
-              Basis Data: Sentinel-5P / TROPOMI • MODIS MAIAC • IEA–EDGAR CO₂
+              Basis Data: Sentinel-5P / TROPOMI (6 Variabel) • MODIS MAIAC (AOD055) • IEA–EDGAR CO₂
             </div>
             <h2 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight font-display leading-tight drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
               {isAtmosfer ? 'Kondisi Atmosfer Kota Surabaya' : 'Estimasi Emisi CO₂ Kota Surabaya'}
             </h2>
             <p className="text-blue-400/80 mt-3 max-w-2xl mx-auto text-base font-medium">
               {isAtmosfer
-                ? 'Visualisasi spasial dan tren temporal gas polutan dan indikator aerosol (Sentinel-5P 2019–2025 & MODIS 2000–2025).'
-                : 'Distribusi spasial dan tren emisi karbon dioksida fosil delapan sektor ekonomi (IEA–EDGAR GHG 2000–2025).'}
+                ? 'Visualisasi spasial resolusi 0.01° (~1 km) dan tren temporal 6 variabel gas polutan Sentinel-5P serta AOD055 MODIS MAIAC.'
+                : 'Distribusi spasial resolusi 0.1° (~11 km) dan tren emisi karbon dioksida fosil delapan sektor ekonomi (IEA–EDGAR GHG 2000–2025).'}
             </p>
           </div>
 
@@ -1031,9 +1032,10 @@ function App() {
               note={`${activeYear - 1} → ${activeYear}`}
             />
             <KpiCard
-              label="Sensor / Produk"
-              value={INDICATOR_META[activeIndicator].source.split(' ')[0]}
-              note={INDICATOR_META[activeIndicator].fullName}
+              label="Resolusi Spasial"
+              value="0.01° × 0.01°"
+              sub="~1 km"
+              note={`${INDICATOR_META[activeIndicator].source}`}
             />
           </div>
         ) : (
@@ -1059,7 +1061,8 @@ function App() {
             <KpiCard
               label="Resolusi Spasial"
               value="0.1° × 0.1°"
-              note="IEA–EDGAR 2026 GHG (2000–2025)"
+              sub="~11 km"
+              note="IEA–EDGAR v2026 GHG (2000–2025)"
             />
           </div>
         )}
@@ -1524,7 +1527,7 @@ function App() {
             <div className="flex justify-between items-center mb-6 relative z-10">
               <div>
                 <h3 className="text-xl font-bold text-white font-display">
-                  {isAtmosfer ? 'Analisis Hotspot Konsentrasi' : 'Peringkat Emisi Sektoral'}
+                  {isAtmosfer ? 'Wilayah dengan Nilai Kolom Relatif Tinggi' : 'Peringkat Emisi Sektoral'}
                 </h3>
                 <p className="text-[11px] text-slate-400 mt-0.5">
                   {isAtmosfer ? 'Berdasarkan Agregat Pengamatan Multi-Tahun (2019–2025)' : `Peringkat kontribusi emisi tahun ${activeYear}`}
@@ -1687,14 +1690,14 @@ function App() {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-3 text-sm text-slate-400 font-medium">
             <ul className="list-disc list-outside ml-5 space-y-2 marker:text-blue-500">
-              <li><strong>Kolom Atmosfer vs Konsentrasi Permukaan:</strong> Data Sentinel-5P mengamati jumlah molekul pada kolom udara utuh (mol/m²), bukan otomatis konsentrasi di permukaan tanah yang dihirup warga.</li>
-              <li><strong>Beda CO dan CO₂:</strong> Karbon monoksida (CO) adalah gas polutan pengamatan Sentinel-5P, sedangkan karbon dioksida (CO₂) adalah gas rumah kaca estimasi pemodelan EDGAR.</li>
-              <li><strong>Periode Produk:</strong> Sentinel-5P mencakup 2019–2025; MODIS MAIAC AOD055 dan EDGAR mencakup rentang historis 2000–2025 (26 tahun).</li>
+              <li><strong>Kolom Atmosfer vs Konsentrasi Permukaan:</strong> Data Sentinel-5P mengamati jumlah molekul pada kolom udara utuh (mol/m²), bukan konsentrasi di permukaan tanah. Wilayah dengan nilai kolom relatif tinggi mencerminkan akumulasi massa vertikal dan tidak dapat langsung diklaim sebagai titik sumber polusi tanpa data pendukung (meteorologi/arah angin).</li>
+              <li><strong>Variabel Satelit:</strong> Sentinel-5P TROPOMI mengamati 6 variabel gas & aerosol (CO, NO₂, SO₂, HCHO, O₃, UVAI), sedangkan AOD055 diamati terpisah oleh sensor MODIS MAIAC (Terra & Aqua).</li>
+              <li><strong>Resolusi Spasial Grid Penelitian:</strong> Pengamatan satelit atmosfer (Sentinel-5P & MODIS MAIAC) beresolusi 0.01° × 0.01° (~1 km), sedangkan pemodelan inventarisasi IEA–EDGAR beresolusi 0.1° × 0.1° (~11 km).</li>
             </ul>
             <ul className="list-disc list-outside ml-5 space-y-2 marker:text-blue-500">
               <li><strong>Cakupan EDGAR:</strong> Sektor EDGAR pada dashboard ini khusus emisi CO₂ dari bahan bakar fosil, belum mencakup emisi biogenik atau gas rumah kaca lain seperti CH₄ dan N₂O.</li>
-              <li><strong>Alokasi Spasial:</strong> Grid EDGAR berukuran ~11 km × 11 km (0.1°). Nilai Surabaya dihitung dengan bobot proporsi irisan sel grid dengan batas administratif kota.</li>
-              <li><strong>Penyaringan Mutu:</strong> Data AOD MODIS menggunakan filter QC70; data satelit telah melalui algoritma retrieval Copernicus & NASA.</li>
+              <li><strong>Alokasi Spasial EDGAR:</strong> Grid EDGAR berukuran ~11 km × 11 km (0.1°). Nilai Surabaya dihitung dengan bobot proporsi irisan sel grid dengan batas administratif kota.</li>
+              <li><strong>Penyaringan Mutu:</strong> Data AOD MODIS menggunakan filter QC70; data satelit telah melalui algoritma retrieval resmi Copernicus & NASA.</li>
             </ul>
           </div>
         </div>

@@ -42,10 +42,10 @@ export default function TentangPage() {
           <span>Profil Platform & Tim Pengembang</span>
         </div>
         <h1 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight font-display drop-shadow-[0_0_20px_rgba(59,130,246,0.3)]">
-          Surabaya Atmospheric & Carbon Footprint
+          SI JAKA PANTAU
         </h1>
         <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">
-          SAC-Footprint Surabaya • STMKG 2026
+          Sistem Informasi Jejak Karbon & Polutan Atmosfer Surabaya • STMKG 2026
         </p>
         <p className="text-slate-300 max-w-3xl mx-auto text-sm md:text-base leading-relaxed">
           Platform pemantauan geospasial terintegrasi yang menyajikan dinamika gas polutan atmosfer (Sentinel-5P & MODIS) dan estimasi jejak emisi karbon dioksida fosil (IEA–EDGAR) di wilayah metropolitan Kota Surabaya.
@@ -165,7 +165,7 @@ export default function TentangPage() {
               </svg>
             </div>
             <h4 className="font-bold text-white text-xs md:text-sm group-hover:text-cyan-300 transition-colors">Sentinel-5P & MODIS</h4>
-            <p className="text-[10px] md:text-[11px] text-slate-400 mt-1">Citra TROPOMI Level-2 & MAIAC AOD</p>
+            <p className="text-[10px] md:text-[11px] text-slate-400 mt-1">TROPOMI (6 Variabel) & MAIAC AOD (0.01° / ~1 km)</p>
           </div>
 
           {/* Card 2: IEA–EDGAR v2026 */}
@@ -179,7 +179,7 @@ export default function TentangPage() {
               </svg>
             </div>
             <h4 className="font-bold text-white text-xs md:text-sm group-hover:text-amber-300 transition-colors">IEA–EDGAR v2026</h4>
-            <p className="text-[10px] md:text-[11px] text-slate-400 mt-1">Grid Emisi Fosil 8 Sektor (26 Tahun)</p>
+            <p className="text-[10px] md:text-[11px] text-slate-400 mt-1">Grid Emisi 8 Sektor 0.1° (~11 km)</p>
           </div>
 
           {/* Card 3: Leaflet & OpenStreetMap */}

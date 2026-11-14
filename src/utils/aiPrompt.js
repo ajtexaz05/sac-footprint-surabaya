@@ -15,8 +15,8 @@ export const AI_CONFIG = {
 export const SYSTEM_INSTRUCTION = `Kamu adalah Asisten Ahli AI Senior untuk SI JAKA PANTAU (Sistem Informasi Jejak Karbon dan Polutan Atmosfer Surabaya).
 Tuliskan laporan analisis sintesis ilmiah mendalam, kaya data numerik, dan komprehensif dalam 5 bagian terstruktur:
 
-### 1. Peta Spasial & Koridor Hotspot Surabaya
-Ulas pola sebaran spasial, interpretasikan rentang skala visual peta (min-max), dan bedah koridor hotspot konsentrasi tertinggi di Surabaya dengan menghubungkannya ke kawasan industri, pelabuhan, atau lalu lintas.
+### 1. Peta Spasial & Wilayah Nilai Kolom Relatif Tinggi Surabaya
+Ulas pola sebaran spasial, interpretasikan rentang skala visual peta (min-max), dan telaah wilayah dengan nilai kolom relatif tinggi di Surabaya. Berikan catatan ilmiah bahwa nilai kolom troposfer satelit mencerminkan akumulasi massa vertikal dan tidak boleh langsung diklaim sebagai titik sumber emisi mutlak di permukaan tanah tanpa data meteorologi/dispersi pendukung.
 
 ### 2. Peringkat Emisi Sektoral & Kontributor Antropogenik Utama
 Ulas peringkat kontributor emisi EDGAR v2026 Kota Surabaya (sektor terbesar, persentase kontribusi, dan mekanisme aktivitasnya terhadap pelepasan polutan/karbon kota).
@@ -33,6 +33,7 @@ Rumuskan program aksi terukur dan aplikatif untuk instansi Pemkot Surabaya (DLH,
 ATURAN STRUKTUR & KINERJA LENGKAP:
 - Gunakan nama resmi aplikasi: SI JAKA PANTAU.
 - Bahasa: 100% BAHASA INDONESIA yang baku, formal, dan ilmiah.
+- SENSOR & RESOLUSI SPASIAL: Data atmosfer satelit mengamati 6 variabel dari Sentinel-5P TROPOMI (CO, NO₂, SO₂, HCHO, O₃, UVAI) dan 1 variabel partikulat optik AOD055 dari sensor MODIS MAIAC (satelit Terra & Aqua), keduanya beresolusi spasial grid 0.01° × 0.01° (~1 km). Sedangkan pemodelan inventarisasi emisi IEA–EDGAR beresolusi 0.1° × 0.1° (~11 km).
 - STRUKTUR: Langsung gunakan 5 judul utama tingkat 3 (### 1. sampai ### 5.). JANGAN membuat puluhan sub-bab bernomor berantai (seperti 1.1, 1.2, 5.1 dst) agar alur bahasan tetap terfokus, padat, dan tuntas.
 - KEDALAMAN: Tuliskan 2-3 paragraf analitis mendalam per bagian yang padat data numerik konkret, analitis, dan aplikatif (target total 900 - 1.250 kata).
 - Tuntaskan seluruh Bagian 1 sampai selesai Bagian 5 secara lengkap tanpa terpotong!`
@@ -60,10 +61,10 @@ export function buildDashboardPromptContext({
   fmtTon,
   fmtNum
 }) {
-  // 1. Skala visual peta spasial
+  // 1. Skala visual peta spasial & resolusi
   const skalaPetaDesc = activeScale
-    ? `${activeScale.title} dengan rentang skala visual Min: ${activeScale.min} hingga Max: ${activeScale.max} ${activeScale.unit}`
-    : 'Resolusi grid 0.1° (~11 km) berbasis batas wilayah Kota Surabaya'
+    ? `${activeScale.title} dengan rentang skala visual Min: ${activeScale.min} hingga Max: ${activeScale.max} ${activeScale.unit} (Resolusi spasial grid: ${isAtmosfer ? '0.01° × 0.01° / ~1 km' : '0.1° × 0.1° / ~11 km'})`
+    : (isAtmosfer ? 'Resolusi grid satelit 0.01° (~1 km)' : 'Resolusi grid pemodelan 0.1° (~11 km)')
 
   // 2. Data tren temporal grafik
   let trenGrafikDesc = `Mode Grafik ${chartView}: `
@@ -78,10 +79,10 @@ export function buildDashboardPromptContext({
     }
   }
 
-  // 3. Koridor hotspot konsentrasi tertinggi
+  // 3. Wilayah dengan nilai kolom relatif tinggi
   const hotspotDesc = isAtmosfer && hotspots && hotspots.length > 0
     ? hotspots.map((h, i) => `${i + 1}. ${h.name} (${h.val})`).join(', ')
-    : 'Konsentrasi spasial emisi terakumulasi pada koridor logistik pelabuhan utara (Tanjung Perak), kawasan industri-pergudangan (Margomulyo & Rungkut), serta jalur arteri perlintasan utama Surabaya.'
+    : 'Akumulasi nilai kolom relatif tinggi teramati pada koridor logistik pelabuhan utara (Tanjung Perak), kawasan industri-pergudangan (Margomulyo & Rungkut), serta jalur arteri perlintasan utama Surabaya.'
 
   // 4. Peringkat emisi sektoral EDGAR v2026
   const rankingSektoralDesc = edgarPieData && edgarPieData.length > 0
@@ -105,15 +106,17 @@ export function buildDashboardPromptContext({
 - Sektor/Kategori Aktif: ${activeSection}
 - Periode Aktif: Bulan ${monthName} Tahun ${activeYear} (Tampilan Grafik ${chartView})
 - Nilai Rata-rata/Total Terkini: ${kpiDesc}
+- Resolusi Spasial Grid Data: ${isAtmosfer ? '0.01° × 0.01° (~1 km) [Sentinel-5P 6 variabel & MODIS MAIAC AOD055]' : '0.1° × 0.1° (~11 km) [IEA–EDGAR v2026 8 sektor]' }
+- Instrumen Pengamatan: ${isAtmosfer ? 'Sentinel-5P TROPOMI (6 variabel: CO, NO₂, SO₂, HCHO, O₃, UVAI) & MODIS MAIAC (AOD055)' : 'IEA–EDGAR v2026 (Estimasi Emisi CO₂ Fosil 8 Sektor)'}
 - Peta Spasial & Skala Visual: ${skalaPetaDesc}
-- Koridor Hotspot / Konsentrasi Tertinggi di Surabaya: ${hotspotDesc}
+- Wilayah dengan Nilai Kolom Relatif Tinggi di Surabaya: ${hotspotDesc}
 - Peringkat Kontribusi Emisi Sektoral EDGAR v2026: ${rankingSektoralDesc}
 - Dinamika Grafik Temporal (${chartView}): ${trenGrafikDesc}
 - Komparasi Antar-Tahun Terpilih (${yearA} vs ${yearB}): ${komparasiDesc}
 
 INSTRUKSI PENGGUNA:
 Berdasarkan seluruh data konteks di atas, buatkan laporan ulasan sintesis ilmiah AI yang mendalam, kaya data numerik, dan lengkap dalam 5 bagian terstruktur:
-### 1. Peta Spasial & Koridor Hotspot Surabaya
+### 1. Peta Spasial & Wilayah Nilai Kolom Relatif Tinggi Surabaya
 ### 2. Peringkat Emisi Sektoral & Kontributor Antropogenik Utama
 ### 3. Dinamika Tren Temporal & Komparasi Antar-Tahun
 ### 4. Analisis Risiko Lingkungan & Kesehatan Warga

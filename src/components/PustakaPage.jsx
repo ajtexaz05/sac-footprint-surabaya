@@ -229,10 +229,10 @@ export default function PustakaPage() {
               </div>
               <h3 className="text-lg font-bold text-white">Sentinel-5P / TROPOMI</h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Satelit Sentinel-5 Precursor diluncurkan 13 Oktober 2017 oleh European Space Agency (ESA). Instrumen utamanya, <strong>TROPOMI</strong> (Tropospheric Monitoring Instrument), mengukur radiasi spektral ultraviolet hingga inframerah dekat untuk menghitung kolom molekul NO₂, SO₂, CO, HCHO, O₃, dan UVAI.
+                Satelit Sentinel-5 Precursor diluncurkan 13 Oktober 2017 oleh European Space Agency (ESA). Instrumen utamanya, <strong>TROPOMI</strong> (Tropospheric Monitoring Instrument), mengukur radiasi spektral ultraviolet hingga inframerah dekat untuk menghitung <strong>6 variabel</strong> atmosfer: NO₂, SO₂, CO, HCHO, O₃, dan UVAI pada resolusi spasial grid <strong>0,01° × 0,01° (~1 km)</strong>.
               </p>
               <div className="mt-auto pt-3 border-t border-blue-900/30 text-[11px] text-slate-400">
-                Diolah menjadi 7 variabel × 7 tahun × 12 bulan citra bulanan Surabaya format GeoTIFF & PNG ber-masking administratif.
+                Diolah menjadi 6 variabel pengamatan gas & aerosol polutan (2019–2025) citra bulanan Surabaya format GeoTIFF & PNG.
               </div>
             </div>
 
@@ -244,10 +244,10 @@ export default function PustakaPage() {
               </div>
               <h3 className="text-lg font-bold text-white">MODIS MAIAC (AOD055)</h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Sensor <strong>MODIS</strong> milik NASA beroperasi pada satelit Terra & Aqua. Produk MAIAC (MCD19A2) mengolah pantulan optik aerosol resolusi tinggi 1 km pada panjang gelombang 0,55 µm. Memberikan rekaman historis jangka panjang dinamika partikel udara di atas Surabaya selama 26 tahun berturut-turut.
+                Sensor <strong>MODIS</strong> milik NASA beroperasi pada satelit Terra & Aqua. Produk MAIAC (MCD19A2) mengolah pantulan optik aerosol resolusi spasial <strong>0,01° × 0,01° (~1 km)</strong> pada panjang gelombang 0,55 µm (variabel AOD055). Memberikan rekaman historis jangka panjang dinamika partikel udara di atas Surabaya selama 26 tahun berturut-turut.
               </p>
               <div className="mt-auto pt-3 border-t border-blue-900/30 text-[11px] text-slate-400">
-                Disaring dengan filter mutu (QC70) dan dirata-ratakan bulanan untuk analisis tren jangka panjang 2000–2025.
+                1 variabel partikulat aerosol optik (AOD055) disaring dengan filter mutu (QC70) untuk analisis tren jangka panjang 2000–2025.
               </div>
             </div>
 
@@ -259,10 +259,10 @@ export default function PustakaPage() {
               </div>
               <h3 className="text-lg font-bold text-white">IEA–EDGAR v2026 GHG</h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                <strong>EDGAR</strong> (Emissions Database for Global Atmospheric Research) dirilis oleh Komisi Eropa (JRC) bersama IEA. Menyajikan estimasi spasial emisi CO₂ bahan bakar fosil grid global 0,1° × 0,1°. Data dipotong (*subset*) dan dialokasikan ke batas Surabaya dengan bobot proporsi luas wilayah (*areal proportion weighting*).
+                <strong>EDGAR</strong> (Emissions Database for Global Atmospheric Research) dirilis oleh Komisi Eropa (JRC) bersama IEA. Menyajikan estimasi spasial emisi CO₂ bahan bakar fosil grid global <strong>0,1° × 0,1° (~11 km)</strong>. Data dipotong (*subset*) dan dialokasikan ke batas Surabaya dengan bobot proporsi luas wilayah (*areal proportion weighting*).
               </p>
               <div className="mt-auto pt-3 border-t border-blue-900/30 text-[11px] text-slate-400">
-                Meliputi 8 sektor ekonomi, 26 tahun × 12 bulan (total 2.496 file citra spasial terdistribusi).
+                Meliputi 8 sektor ekonomi fosil, 26 tahun × 12 bulan (total 2.496 file citra spasial terdistribusi).
               </div>
             </div>
           </div>
@@ -271,7 +271,7 @@ export default function PustakaPage() {
           <div className="bg-[#0a1120] p-6 rounded-2xl border border-blue-900/40 shadow-xl overflow-hidden">
             <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2">
               <span className="w-1.5 h-4 bg-blue-500 rounded-full inline-block"></span>
-              <span>Tabel Rujukan: Periode, Satuan Asli, dan Makna Pengukuran Produk</span>
+              <span>Tabel Rujukan: Periode, Satuan Asli, Resolusi Spasial, dan Makna Pengukuran Produk</span>
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left text-slate-300">
@@ -279,6 +279,7 @@ export default function PustakaPage() {
                   <tr>
                     <th className="py-2.5 px-4">Indikator</th>
                     <th className="py-2.5 px-4">Sensor / Sumber</th>
+                    <th className="py-2.5 px-4">Resolusi Spasial</th>
                     <th className="py-2.5 px-4">Periode</th>
                     <th className="py-2.5 px-4">Satuan Asli</th>
                     <th className="py-2.5 px-4">Interpretasi Fisik</th>
@@ -288,6 +289,7 @@ export default function PustakaPage() {
                   <tr className="hover:bg-blue-950/20">
                     <td className="py-2.5 px-4 font-bold text-white">CO</td>
                     <td className="py-2.5 px-4">Sentinel-5P / TROPOMI</td>
+                    <td className="py-2.5 px-4 font-mono text-cyan-300">0.01° × 0.01° (~1 km)</td>
                     <td className="py-2.5 px-4 font-mono">2019–2025</td>
                     <td className="py-2.5 px-4 font-mono text-blue-300">mol/m²</td>
                     <td className="py-2.5 px-4">Kerapatan vertikal molekul Karbon Monoksida per meter persegi.</td>
@@ -295,6 +297,7 @@ export default function PustakaPage() {
                   <tr className="hover:bg-blue-950/20">
                     <td className="py-2.5 px-4 font-bold text-white">NO₂</td>
                     <td className="py-2.5 px-4">Sentinel-5P / TROPOMI</td>
+                    <td className="py-2.5 px-4 font-mono text-cyan-300">0.01° × 0.01° (~1 km)</td>
                     <td className="py-2.5 px-4 font-mono">2019–2025</td>
                     <td className="py-2.5 px-4 font-mono text-blue-300">mol/m²</td>
                     <td className="py-2.5 px-4">Kolom troposfer Nitrogen Dioksida dari mesin kendaraan & industri.</td>
@@ -302,6 +305,7 @@ export default function PustakaPage() {
                   <tr className="hover:bg-blue-950/20">
                     <td className="py-2.5 px-4 font-bold text-white">SO₂</td>
                     <td className="py-2.5 px-4">Sentinel-5P / TROPOMI</td>
+                    <td className="py-2.5 px-4 font-mono text-cyan-300">0.01° × 0.01° (~1 km)</td>
                     <td className="py-2.5 px-4 font-mono">2019–2025</td>
                     <td className="py-2.5 px-4 font-mono text-blue-300">mol/m²</td>
                     <td className="py-2.5 px-4">Kolom atmosfer Sulfur Dioksida dari pembakaran fosil bersulfur.</td>
@@ -309,6 +313,7 @@ export default function PustakaPage() {
                   <tr className="hover:bg-blue-950/20">
                     <td className="py-2.5 px-4 font-bold text-white">HCHO</td>
                     <td className="py-2.5 px-4">Sentinel-5P / TROPOMI</td>
+                    <td className="py-2.5 px-4 font-mono text-cyan-300">0.01° × 0.01° (~1 km)</td>
                     <td className="py-2.5 px-4 font-mono">2019–2025</td>
                     <td className="py-2.5 px-4 font-mono text-blue-300">mol/m²</td>
                     <td className="py-2.5 px-4">Penanda proses oksidasi senyawa organik volatil (VOC) di udara.</td>
@@ -316,6 +321,7 @@ export default function PustakaPage() {
                   <tr className="hover:bg-blue-950/20">
                     <td className="py-2.5 px-4 font-bold text-white">O₃</td>
                     <td className="py-2.5 px-4">Sentinel-5P / TROPOMI</td>
+                    <td className="py-2.5 px-4 font-mono text-cyan-300">0.01° × 0.01° (~1 km)</td>
                     <td className="py-2.5 px-4 font-mono">2019–2025</td>
                     <td className="py-2.5 px-4 font-mono text-blue-300">mol/m²</td>
                     <td className="py-2.5 px-4">Kolom total ozon atmosfer (termasuk lapisan stratosfer atas).</td>
@@ -323,13 +329,15 @@ export default function PustakaPage() {
                   <tr className="hover:bg-blue-950/20">
                     <td className="py-2.5 px-4 font-bold text-white">UVAI</td>
                     <td className="py-2.5 px-4">Sentinel-5P / TROPOMI</td>
+                    <td className="py-2.5 px-4 font-mono text-cyan-300">0.01° × 0.01° (~1 km)</td>
                     <td className="py-2.5 px-4 font-mono">2019–2025</td>
                     <td className="py-2.5 px-4 font-mono text-slate-400">– (indeks)</td>
-                    <td className="py-2.5 px-4">Indeks penyerapan radiasi UV oleh asap, jelaga, dan abu vulkanik.</td>
+                    <td className="py-2.5 px-4">Indeks penyerapan radiasi UV oleh asap, jelaga, dan abu partikulat.</td>
                   </tr>
                   <tr className="hover:bg-blue-950/20">
                     <td className="py-2.5 px-4 font-bold text-white">AOD055</td>
                     <td className="py-2.5 px-4">MODIS Terra/Aqua MAIAC</td>
+                    <td className="py-2.5 px-4 font-mono text-cyan-300">0.01° × 0.01° (~1 km)</td>
                     <td className="py-2.5 px-4 font-mono">2000–2025</td>
                     <td className="py-2.5 px-4 font-mono text-slate-400">– (indeks)</td>
                     <td className="py-2.5 px-4">Tingkat redaman berkas cahaya optik 0.55 µm oleh partikel aerosol.</td>
@@ -337,6 +345,7 @@ export default function PustakaPage() {
                   <tr className="hover:bg-blue-950/20">
                     <td className="py-2.5 px-4 font-bold text-white">8 Sektor EDGAR</td>
                     <td className="py-2.5 px-4">EC JRC / IEA–EDGAR GHG</td>
+                    <td className="py-2.5 px-4 font-mono text-amber-300">0.1° × 0.1° (~11 km)</td>
                     <td className="py-2.5 px-4 font-mono">2000–2025</td>
                     <td className="py-2.5 px-4 font-mono text-amber-300">ton CO₂/bulan</td>
                     <td className="py-2.5 px-4">Massa emisi karbon dioksida per sektor kegiatan ekonomi perkotaan.</td>
@@ -370,7 +379,7 @@ export default function PustakaPage() {
               </p>
               <div className="bg-[#050B14] p-3 rounded-xl border border-blue-900/30 text-xs text-slate-400 space-y-1">
                 <p><strong>Dampak:</strong> Iritasi saluran pernapasan, pembentukan aerosol nitrat sekunder, dan prekursor ozon fotokimia.</p>
-                <p><strong>Hotspot Surabaya:</strong> Koridor Pelabuhan Tanjung Perak, Tol Dupak, dan Kawasan SIER Rungkut.</p>
+                <p><strong>Wilayah Nilai Kolom Relatif Tinggi di Surabaya:</strong> Koridor Pelabuhan Tanjung Perak, Tol Dupak, dan Kawasan SIER Rungkut.</p>
               </div>
             </div>
 
@@ -385,7 +394,7 @@ export default function PustakaPage() {
               </p>
               <div className="bg-[#050B14] p-3 rounded-xl border border-blue-900/30 text-xs text-slate-400 space-y-1">
                 <p><strong>Dampak:</strong> Memperparah asma, merusak vegetasi, dan menyebabkan hujan asam yang merusak material korosif.</p>
-                <p><strong>Hotspot Surabaya:</strong> Dermaga Jamrud Pelabuhan Perak, Pabean Cantikan, dan pergudangan Margomulyo.</p>
+                <p><strong>Wilayah Nilai Kolom Relatif Tinggi di Surabaya:</strong> Dermaga Jamrud Pelabuhan Perak, Pabean Cantikan, dan pergudangan Margomulyo.</p>
               </div>
             </div>
 
@@ -400,7 +409,7 @@ export default function PustakaPage() {
               </p>
               <div className="bg-[#050B14] p-3 rounded-xl border border-blue-900/30 text-xs text-slate-400 space-y-1">
                 <p><strong>Dampak:</strong> Mengikat hemoglobin darah 200× lebih kuat daripada oksigen; beracun pada konsentrasi tinggi.</p>
-                <p><strong>Hotspot Surabaya:</strong> Kawasan industri Romokalisari / Benowo, Margomulyo, dan arteri Karang Pilang.</p>
+                <p><strong>Wilayah Nilai Kolom Relatif Tinggi di Surabaya:</strong> Kawasan industri Romokalisari / Benowo, Margomulyo, dan arteri Karang Pilang.</p>
               </div>
             </div>
 
@@ -415,7 +424,7 @@ export default function PustakaPage() {
               </p>
               <div className="bg-[#050B14] p-3 rounded-xl border border-blue-900/30 text-xs text-slate-400 space-y-1">
                 <p><strong>Dampak:</strong> Iritasi mata dan tenggorokan; penanda kunci aktivitas kimia fotokimia regional atmosfer.</p>
-                <p><strong>Hotspot Surabaya:</strong> Pusat Niaga Genteng / Tunjungan, Bubutan Pasar Turi, dan Sukolilo.</p>
+                <p><strong>Wilayah Nilai Kolom Relatif Tinggi di Surabaya:</strong> Pusat Niaga Genteng / Tunjungan, Bubutan Pasar Turi, dan Sukolilo.</p>
               </div>
             </div>
 
